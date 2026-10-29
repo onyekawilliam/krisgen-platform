@@ -11,11 +11,25 @@ function signToken(userId) {
   });
 }
 
+function cookieOptions() {
+  const production = process.env.NODE_ENV === "production";
+  const configuredSameSite = process.env.COOKIE_SAME_SITE?.toLowerCase();
+  const sameSite = ["lax", "strict", "none"].includes(configuredSameSite)
+    ? configuredSameSite
+    : production ? "none" : "lax";
+
+  return {
+    httpOnly: true,
+    // SameSite=None requires Secure. Production traffic is always HTTPS.
+    secure: production || sameSite === "none",
+    sameSite,
+    path: "/",
+  };
+}
+
 function sendTokenCookie(res, token) {
   res.cookie(process.env.COOKIE_NAME || "krisgen_token", token, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
+    ...cookieOptions(),
     maxAge: 7 * 24 * 60 * 60 * 1000,
   });
 }
@@ -84,7 +98,7 @@ exports.login = asyncHandler(async (req, res) => {
 });
 
 exports.logout = asyncHandler(async (req, res) => {
-  res.clearCookie(process.env.COOKIE_NAME || "krisgen_token");
+  res.clearCookie(process.env.COOKIE_NAME || "krisgen_token", cookieOptions());
   res.json({ success: true, message: "Logged out" });
 });
 

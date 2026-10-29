@@ -1,8 +1,5 @@
 require("dotenv").config();
 
-const dns = require("dns");
-dns.setServers(["8.8.8.8", "8.8.4.4"])
-
 const express = require("express");
 const cors = require("cors");
 const cookieParser = require("cookie-parser");
@@ -20,10 +17,26 @@ const referralRoutes = require("./routes/referralRoutes");
 const withdrawalRoutes = require("./routes/withdrawalRoutes");
 const adminRoutes = require("./routes/adminRoutes");
 
+function validateProductionConfig() {
+  if (process.env.NODE_ENV !== "production") return;
+  const required = ["MONGO_URI", "CLIENT_URL", "JWT_SECRET", "FLW_SECRET_KEY", "FLW_VERIFY_URL"];
+  const missing = required.filter((key) => !process.env[key]);
+  if (missing.length) {
+    throw new Error(`Missing required production environment variables: ${missing.join(", ")}`);
+  }
+  if (!/^https:\/\//.test(process.env.CLIENT_URL)) {
+    throw new Error("CLIENT_URL must be an HTTPS frontend origin in production");
+  }
+}
+
+validateProductionConfig();
 connectDB();
 
 const app = express();
 
+// Render sits behind a reverse proxy. Trust exactly that hop so rate limits and
+// secure cookies use the original client request information.
+if (process.env.NODE_ENV === "production") app.set("trust proxy", 1);
 app.use(cors({ origin: process.env.CLIENT_URL, credentials: true }));
 app.use(express.json());
 app.use(cookieParser());

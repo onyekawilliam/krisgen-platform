@@ -1,0 +1,23 @@
+services:
+  - type: web
+    name: krisgen-api
+    runtime: node
+    rootDir: backend
+    buildCommand: npm ci
+    startCommand: npm start
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: MONGO_URI
+        sync: false
+      - key: CLIENT_URL
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: FLW_SECRET_KEY
+        sync: false
+      - key: FLW_VERIFY_URL
+        sync: false
+      - key: COOKIE_SAME_SITE
+        value: none

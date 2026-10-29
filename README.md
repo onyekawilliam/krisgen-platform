@@ -37,8 +37,9 @@ Seed an admin account and sample phones:
 node seed.js
 ```
 
-This creates an admin using `SEED_ADMIN_EMAIL` / `SEED_ADMIN_PASSWORD` from your `.env` (defaults to
-`admin@krisgen.com` / `changeMe123!` — change this before going live) and eight sample phones.
+This creates an admin using `SEED_ADMIN_EMAIL` / `SEED_ADMIN_PASSWORD` from your `.env` and eight sample
+phones. Set both values explicitly before running the seed script. Do not run the seed script against an
+existing production database.
 
 ## Frontend setup
 
@@ -50,20 +51,57 @@ npm run dev         # starts on http://localhost:5173
 
 If your API runs somewhere other than `http://localhost:5000/api`, set `VITE_API_URL` in a `frontend/.env` file.
 
-## Before going to production
+## Deployment: Vercel, Render, and MongoDB Atlas
 
-1. **MongoDB Atlas** — create a cluster, get your connection string into `MONGO_URI`.
-2. **Flutterwave** — get live API keys from your Flutterwave dashboard, set `FLW_SECRET_KEY` /
-   `FLW_PUBLIC_KEY`. The checkout flow in `ProductDetails.jsx` creates a pending order; you'll want to wire in
-   Flutterwave's inline checkout SDK on the frontend and call `POST /api/orders/verify-payment` with the
-   `transaction_id` it returns — the backend re-verifies with Flutterwave directly and never trusts the frontend's
-   claim that payment succeeded.
-3. **JWT_SECRET** — set a long random string, not the placeholder.
-4. **Change the seeded admin password** immediately after first login.
-5. **HTTPS** — the auth cookie is set `secure: true` in production, so the app must be served over HTTPS for login
-   to work.
-6. Review `backend/services/commissionService.js` and `backend/models/Settings.js` if you want to adjust the
-   default 15% / 5% rates — they're configurable from Admin → Settings without a redeploy.
+The repository includes `frontend/vercel.json` for React Router deep links and `render.yaml` for the Express API.
+Deploy the frontend with **Root Directory** set to `frontend`, and deploy the Render web service from `backend`
+(the Blueprint already declares that root directory). Render uses `npm ci`, `npm start`, and `/api/health` as its
+health check. It supplies `PORT`; do not configure a fixed production port.
+
+### MongoDB Atlas
+
+Create an Atlas database user with only the application permissions it needs, allow the Render service to connect
+in Atlas Network Access, and put the Atlas `mongodb+srv` connection string in Render as `MONGO_URI`. Atlas runs as
+a replica set, which is required for transactional stock deduction, in-store sales, and payment fulfillment.
+
+### Render environment variables
+
+Configure these values in Render's Environment settings (never commit them):
+
+| Variable | Required | Purpose |
+| --- | --- | --- |
+| `NODE_ENV` | Yes | Set to `production`. |
+| `MONGO_URI` | Yes | MongoDB Atlas connection string. |
+| `CLIENT_URL` | Yes | Exact HTTPS Vercel frontend origin, without a trailing path. |
+| `JWT_SECRET` | Yes | Long, random signing secret. |
+| `FLW_SECRET_KEY` | Yes | Flutterwave **live** secret key. |
+| `FLW_VERIFY_URL` | Yes | Flutterwave **live** transaction-verification endpoint. |
+| `COOKIE_SAME_SITE` | Yes for separate Vercel/Render domains | Set to `none`; the API then requires HTTPS secure cookies. Use `lax` only when the frontend and API are hosted on same-site custom subdomains. |
+| `JWT_EXPIRES_IN` | Optional | JWT lifetime; defaults to seven days. |
+| `COOKIE_NAME` | Optional | Auth-cookie name; defaults to `krisgen_token`. |
+
+The API verifies every Flutterwave result directly with Flutterwave using `FLW_SECRET_KEY`; no Flutterwave secret is
+sent to the browser. Do not use sandbox/test payment credentials in the production Render service.
+
+### Vercel environment variables
+
+Set these in Vercel for the Production environment before its build:
+
+| Variable | Required | Purpose |
+| --- | --- | --- |
+| `VITE_API_URL` | Yes | Render API origin with the `/api` suffix. |
+| `VITE_FLW_PUBLIC_KEY` | Yes | Flutterwave **live public** key. |
+
+`VITE_API_URL` is embedded at build time. A production build without it refuses to fall back to localhost. Do not
+place `JWT_SECRET`, `MONGO_URI`, or `FLW_SECRET_KEY` in Vercel; any `VITE_` variable is public to the browser.
+
+After both services are configured, update Render's `CLIENT_URL` to the final Vercel HTTPS origin, redeploy Render,
+then verify the Render `/api/health` endpoint, registration/login, protected admin pages, and a payment verification
+using a controlled live transaction. Do not seed or reset the production database during this process.
+
+Browsers increasingly restrict third-party cookies. For the most reliable login behavior, attach custom frontend and
+API subdomains beneath the same parent domain and set `COOKIE_SAME_SITE=lax`; otherwise use the configured
+cross-site `none` setting over HTTPS.
 
 ## API overview
 
