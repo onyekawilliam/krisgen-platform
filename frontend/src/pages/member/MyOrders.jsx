@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useFlutterwave, closePaymentModal } from "flutterwave-react-v3";
 import api from "../../api/axios";
 import { useAuth } from "../../context/AuthContext";
@@ -10,6 +10,7 @@ function naira(n) {
 
 const statusColor = {
   pending_payment: "text-ink-faint",
+  payment_review: "text-gold-bright",
   paid: "text-teal",
   processing: "text-gold-bright",
   delivered: "text-teal",
@@ -24,14 +25,13 @@ export default function MyOrders() {
   const [paymentAmount, setPaymentAmount] = useState(0);
   const [loadingId, setLoadingId] = useState(null);
   const [error, setError] = useState("");
+  const verifyingPayment = useRef(false);
 
   const handleFlutterPayment = useFlutterwave({
     public_key: import.meta.env.VITE_FLW_PUBLIC_KEY,
-    tx_ref: selectedOrder
-      ? `krisgen-${selectedOrder._id}-${Date.now()}`
-      : `krisgen-${Date.now()}`,
+    tx_ref: selectedOrder?.paymentReference || "",
     amount: paymentAmount,
-    currency: "NGN",
+    currency: selectedOrder?.currency || "NGN",
     payment_options: "card,banktransfer,ussd",
     customer: {
       email: user?.email || "",
@@ -49,10 +49,20 @@ export default function MyOrders() {
     api.get("/orders/mine").then((res) => setOrders(res.data.data));
   }, []);
 
-  function continuePayment(order) {
+  async function continuePayment(order) {
+    if (loadingId || selectedOrder) return;
     setError("");
-    setSelectedOrder(order);
-    setPaymentAmount(order.totalAmount);
+    setLoadingId(order._id);
+    try {
+      const response = await api.post(`/orders/${order._id}/payment-attempt`);
+      const attempt = response.data.data;
+      setSelectedOrder({ ...order, ...attempt });
+      setPaymentAmount(attempt.totalAmount);
+    } catch (err) {
+      setError(err.response?.data?.message || "Could not start payment. Please refresh your orders.");
+      setLoadingId(null);
+      api.get("/orders/mine").then((response) => setOrders(response.data.data)).catch(() => {});
+    }
   }
 
   async function cancelOrder(orderId) {
@@ -85,35 +95,40 @@ export default function MyOrders() {
   }
 
   useEffect(() => {
-    if (!selectedOrder || !paymentAmount) return;
+    if (!selectedOrder?.paymentReference || !paymentAmount) return;
 
     handleFlutterPayment({
       callback: async (response) => {
+        verifyingPayment.current = true;
         try {
           setLoadingId(selectedOrder._id);
-
-          await api.post("/orders/verify-payment", {
+          const verification = await api.post("/orders/verify-payment", {
             orderId: selectedOrder._id,
             transactionId: response.transaction_id,
           });
-
-          closePaymentModal();
-
-          setOrders((current) =>
-            current.map((order) =>
-              order._id === selectedOrder._id
-                ? { ...order, status: "paid" }
-                : order
-            )
-          );
+          const status = verification.data.data.status;
+          setOrders((current) => current.map((order) =>
+            order._id === selectedOrder._id ? { ...order, status } : order
+          ));
         } catch (err) {
-          closePaymentModal();
-
+          if (err.response?.data?.data?.status === "payment_review") {
+            setOrders((current) => current.map((order) =>
+              order._id === selectedOrder._id ? { ...order, status: "payment_review" } : order
+            ));
+          }
           setError(
             err.response?.data?.message ||
-            "Payment was received but could not be verified."
+            "Could not confirm payment. Refresh your orders before attempting another payment."
           );
         } finally {
+          try {
+            const refreshed = await api.get("/orders/mine");
+            setOrders(refreshed.data.data);
+          } catch {
+            setError((current) => current || "Could not refresh orders. Reload to check payment status.");
+          }
+          closePaymentModal();
+          verifyingPayment.current = false;
           setLoadingId(null);
           setSelectedOrder(null);
           setPaymentAmount(0);
@@ -121,6 +136,8 @@ export default function MyOrders() {
       },
 
       onClose: () => {
+        if (verifyingPayment.current) return;
+        setLoadingId(null);
         setSelectedOrder(null);
         setPaymentAmount(0);
       },
@@ -145,7 +162,7 @@ export default function MyOrders() {
               <div className="flex justify-between items-center mb-2">
                 <span className="font-mono text-sm text-ink-dim">{o.orderNumber}</span>
                 <span className={`text-xs font-semibold uppercase ${statusColor[o.status] || "text-ink-dim"}`}>
-                  {o.status.replace("_", " ")}
+                  {o.status === "payment_review" ? "Payment received — awaiting admin review" : o.status.replaceAll("_", " ")}
                 </span>
               </div>
               {o.items.map((item, i) => (
@@ -163,7 +180,7 @@ export default function MyOrders() {
                   <button
                     className="btn-primary"
                     onClick={() => continuePayment(o)}
-                    disabled={loadingId === o._id}
+                    disabled={Boolean(loadingId) || Boolean(selectedOrder)}
                   >
                     Continue Payment
                   </button>
@@ -171,7 +188,7 @@ export default function MyOrders() {
                   <button
                     className="btn-secondary"
                     onClick={() => cancelOrder(o._id)}
-                    disabled={loadingId === o._id}
+                    disabled={Boolean(loadingId) || Boolean(selectedOrder)}
                   >
                     {loadingId === o._id ? "Please wait..." : "Cancel Order"}
                   </button>

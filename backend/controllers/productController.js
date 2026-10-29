@@ -1,6 +1,21 @@
 const Product = require("../models/Product");
 const ApiError = require("../utils/ApiError");
 const asyncHandler = require("../utils/asyncHandler");
+const { validStock, validRate } = require("../utils/numericIntegrity");
+
+const productFields = new Set(["name", "brand", "model", "images", "ram", "storage", "colors",
+  "specifications", "description", "costPrice", "sellingPrice", "stock", "isActive", "commissionRateOverride"]);
+function validateProductChanges(body) {
+  if (!body || typeof body !== "object" || Array.isArray(body) || Object.keys(body).some(key => !productFields.has(key))) {
+    throw new ApiError(400, "Only editable product fields may be submitted");
+  }
+  if (Object.hasOwn(body, "stock") && !validStock(body.stock)) {
+    throw new ApiError(400, "Stock must be a non-negative safe whole number");
+  }
+  if (Object.hasOwn(body, "commissionRateOverride") && body.commissionRateOverride !== null && !validRate(body.commissionRateOverride)) {
+    throw new ApiError(400, "Commission percentage must be between 0 and 100, or null to use the default");
+  }
+}
 
 // Public/customer listing — costPrice is excluded at the query level
 // (schema has select:false on it), so it never even reaches this handler
@@ -46,6 +61,7 @@ exports.adminGetProduct = asyncHandler(async (req, res) => {
 });
 
 exports.createProduct = asyncHandler(async (req, res) => {
+  validateProductChanges(req.body);
   const { name, brand, model, sellingPrice, costPrice, stock } = req.body;
   if (!name || !brand || !model || sellingPrice == null || costPrice == null) {
     throw new ApiError(400, "name, brand, model, sellingPrice and costPrice are required");
@@ -54,11 +70,12 @@ exports.createProduct = asyncHandler(async (req, res) => {
     throw new ApiError(400, "Selling price must be greater than cost price");
   }
 
-  const product = await Product.create({ ...req.body, stock: stock || 0 });
+  const product = await Product.create({ ...req.body, stock: stock === undefined ? 0 : stock });
   res.status(201).json({ success: true, data: product });
 });
 
 exports.updateProduct = asyncHandler(async (req, res) => {
+  validateProductChanges(req.body);
   const product = await Product.findById(req.params.id).select("+costPrice");
   if (!product) throw new ApiError(404, "Product not found");
 

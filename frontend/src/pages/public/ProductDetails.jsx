@@ -26,9 +26,9 @@ export default function ProductDetails() {
 
   const handleFlutterPayment = useFlutterwave({
   public_key: import.meta.env.VITE_FLW_PUBLIC_KEY,
-  tx_ref: `krisgen-${Date.now()}`,
+  tx_ref: pendingOrder?.paymentReference || "",
   amount: paymentAmount,
-  currency: "NGN",
+  currency: pendingOrder?.currency || "NGN",
   payment_options: "card,banktransfer,ussd",
   customer: {
     email: user?.email || "",
@@ -45,7 +45,7 @@ export default function ProductDetails() {
 });
 
 useEffect(() => {
-  if (!pendingOrder || !paymentAmount) return;
+  if (!pendingOrder?.paymentReference || !paymentAmount) return;
 
   handleFlutterPayment({
     callback: async (response) => {
@@ -63,6 +63,10 @@ useEffect(() => {
       } catch (err) {
         closePaymentModal();
 
+        if (err.response?.data?.data?.status === "payment_review") {
+          navigate("/dashboard/orders");
+          return;
+        }
         setError(
           err.response?.data?.message ||
             "Payment was received but could not be verified."

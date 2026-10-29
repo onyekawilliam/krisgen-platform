@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const { validStock, validRate, strictNumber, guardNumericUpdates } = require("../utils/numericIntegrity");
 
 const productSchema = new mongoose.Schema(
   {
@@ -28,12 +29,15 @@ const productSchema = new mongoose.Schema(
     costPrice: { type: Number, required: true, select: false },
     sellingPrice: { type: Number, required: true },
 
-    stock: { type: Number, required: true, default: 0 },
+    stock: { type: Number, required: true, default: 0, set: strictNumber("stock"),
+      validate: { validator: validStock, message: "Stock must be a non-negative safe whole number" } },
     isActive: { type: Boolean, default: true },
 
     // Per-product override of the platform default commission rate (percentage, e.g. 15 = 15%)
     commissionRateOverride: {
       type: Number,
+      set: strictNumber("commissionRateOverride", true),
+      validate: { validator: value => value == null || validRate(value), message: "Commission percentage must be between 0 and 100" },
       default: null,
       min: [0, "Commission percentage cannot be less than 0"],
       max: [100, "Commission percentage cannot be greater than 100"],
@@ -41,6 +45,11 @@ const productSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
+
+guardNumericUpdates(productSchema, {
+  stock: { validate: validStock, message: "Stock must be a non-negative safe whole number" },
+  commissionRateOverride: { validate: validRate, nullable: true, message: "Commission percentage must be between 0 and 100" },
+});
 
 productSchema.index({ brand: 1, isActive: 1 });
 productSchema.index({ name: "text", model: "text", description: "text" });

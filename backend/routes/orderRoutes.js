@@ -5,6 +5,7 @@ const { protect, adminOnly } = require("../middlewares/auth");
 
 router.post("/", protect, ctrl.createOrder);
 router.post("/verify-payment", protect, ctrl.verifyPayment);
+router.post("/:id/payment-attempt", protect, ctrl.createPaymentAttempt);
 router.get("/mine", protect, ctrl.myOrders);
 router.patch("/:id/cancel", protect, ctrl.cancelMyOrder);
 

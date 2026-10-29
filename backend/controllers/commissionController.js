@@ -2,6 +2,7 @@ const Commission = require("../models/Commission");
 const Settings = require("../models/Settings");
 const ApiError = require("../utils/ApiError");
 const asyncHandler = require("../utils/asyncHandler");
+const { validRate } = require("../utils/numericIntegrity");
 
 // Member's own earnings — costPriceSnapshot stays excluded (schema default),
 // so a member can see how their commission was derived (profit, rate,
@@ -37,7 +38,14 @@ exports.adminListCommissions = asyncHandler(async (req, res) => {
     .select("+costPriceSnapshot")
     .populate("beneficiary", "name email")
     .populate("product", "name brand model")
-    .populate("order", "orderNumber")
+    // The order is the authoritative source for the customer and sale time.
+    // An in-store walk-in has no buyer, so keep its saved customer snapshot
+    // alongside the registered buyer relation for the admin audit trail.
+    .populate({
+      path: "order",
+      select: "orderNumber buyer walkInCustomer createdAt payment.reference",
+      populate: { path: "buyer", select: "name email phone" },
+    })
     .sort({ createdAt: -1 });
 
   res.json({ success: true, data: commissions });
@@ -63,6 +71,13 @@ exports.adminGetSettings = asyncHandler(async (req, res) => {
 });
 
 exports.adminUpdateSettings = asyncHandler(async (req, res) => {
+  if (!req.body || typeof req.body !== "object" || Array.isArray(req.body) ||
+      Object.keys(req.body).some(key => !["directCommissionRate", "referralOverrideRate"].includes(key))) {
+    throw new ApiError(400, "Only commission rate fields may be submitted");
+  }
+  for (const [key, value] of Object.entries(req.body)) {
+    if (!validRate(value)) throw new ApiError(400, key + " must be a finite number between 0 and 100");
+  }
   const { directCommissionRate, referralOverrideRate } = req.body;
   const settings = await Settings.getSettings();
 

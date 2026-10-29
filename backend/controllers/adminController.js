@@ -1,11 +1,13 @@
 const User = require("../models/User");
 const Order = require("../models/Order");
+const PaymentReceipt = require("../models/PaymentReceipt");
 const Commission = require("../models/Commission");
 const Product = require("../models/Product");
 const Withdrawal = require("../models/Withdrawal");
 const Referral = require("../models/Referral");
 const ApiError = require("../utils/ApiError");
 const asyncHandler = require("../utils/asyncHandler");
+const { recordInStoreSale } = require("../services/inStoreSaleService");
 
 exports.listMembers = asyncHandler(async (req, res) => {
   const { search } = req.query;
@@ -50,12 +52,13 @@ exports.setMemberStatus = asyncHandler(async (req, res) => {
 });
 
 exports.dashboardStats = asyncHandler(async (req, res) => {
-  const [memberCount, productCount, orders, commissions, pendingWithdrawals] = await Promise.all([
+  const [memberCount, productCount, orders, commissions, pendingWithdrawals, paymentReviewCount] = await Promise.all([
     User.countDocuments({ role: "customer" }),
     Product.countDocuments({ isActive: true }),
     Order.find({ status: { $in: ["paid", "processing", "delivered"] } }),
     Commission.find(),
     Withdrawal.countDocuments({ status: "pending" }),
+    PaymentReceipt.countDocuments({ resolutionRequired: true }),
   ]);
 
   const totalRevenue = orders.reduce((sum, o) => sum + o.totalAmount, 0);
@@ -72,6 +75,23 @@ exports.dashboardStats = asyncHandler(async (req, res) => {
       totalRevenue,
       totalCommissionsOwed,
       pendingWithdrawals,
+      paymentReviewCount,
     },
   });
+});
+
+exports.recordInStoreSale = asyncHandler(async (req, res) => {
+  const { order, replayed } = await recordInStoreSale(req.body, req.user._id);
+  res.status(replayed ? 200 : 201).json({
+    success: true,
+    message: replayed ? "Sale already recorded" : "In-store sale recorded successfully",
+    data: order,
+  });
+});
+
+// Successful provider payments needing reconciliation; no refund is initiated.
+exports.listPaymentReviews = asyncHandler(async (req, res) => {
+  const receipts = await PaymentReceipt.find({ resolutionRequired: true })
+    .populate("order", "orderNumber status").sort({ verifiedAt: -1 });
+  res.json({ success: true, data: receipts });
 });

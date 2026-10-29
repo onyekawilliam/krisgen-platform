@@ -23,7 +23,7 @@ const Settings = require("../models/Settings");
  *  - idempotencyKey prevents the same order from generating commissions twice
  *    even if this function is accidentally called more than once for it.
  */
-async function generateCommissionsForOrder(order) {
+async function generateCommissionsForOrder(order, { session = null } = {}) {
 
   // console.log("=== COMMISSION DEBUG ===");
   // console.log("Order:", order._id);
@@ -34,12 +34,15 @@ async function generateCommissionsForOrder(order) {
     return []; // plain customer purchase — no seller, no commission
   }
 
-  const settings = await Settings.getSettings();
+  const settings = await Settings.getSettings({ session });
   const created = [];
 
   for (const item of order.items) {
-    const product = await Product.findById(item.product).select("+costPrice");
-    if (!product) continue;
+    const product = await Product.findById(item.product).select("+costPrice").session(session);
+    if (!product) {
+      if (session) throw new Error("Commission product is unavailable");
+      continue;
+    }
 
     const rate =
       typeof product.commissionRateOverride === "number"
@@ -51,7 +54,7 @@ async function generateCommissionsForOrder(order) {
     const commissionAmount = round2(grossProfit * (rate / 100));
 
     const directKey = idKey(order._id, item.product, "direct");
-    const existingDirect = await Commission.findOne({ idempotencyKey: directKey });
+    const existingDirect = await Commission.findOne({ idempotencyKey: directKey }).session(session);
     if (!existingDirect) {
 
       // // console.log("Creating direct commission:", {
@@ -61,7 +64,7 @@ async function generateCommissionsForOrder(order) {
       //   commissionAmount,
       // });
 
-      const directCommission = await Commission.create({
+      const directCommission = await new Commission({
         order: order._id,
         product: item.product,
         beneficiary: order.soldBy,
@@ -75,19 +78,19 @@ async function generateCommissionsForOrder(order) {
         commissionAmount,
         status: "pending",
         idempotencyKey: directKey,
-      });
+      }).save({ session });
       created.push(directCommission);
     }
 
     // One-hop override: does the seller have a referrer?
-    const referral = await Referral.findOne({ referred: order.soldBy });
+    const referral = await Referral.findOne({ referred: order.soldBy }).session(session);
     if (referral) {
       const overrideRate = settings.referralOverrideRate;
       const overrideAmount = round2(grossProfit * (overrideRate / 100));
       const overrideKey = idKey(order._id, item.product, "override");
-      const existingOverride = await Commission.findOne({ idempotencyKey: overrideKey });
+      const existingOverride = await Commission.findOne({ idempotencyKey: overrideKey }).session(session);
       if (!existingOverride) {
-        const overrideCommission = await Commission.create({
+        const overrideCommission = await new Commission({
           order: order._id,
           product: item.product,
           beneficiary: referral.referrer,
@@ -101,7 +104,7 @@ async function generateCommissionsForOrder(order) {
           commissionAmount: overrideAmount,
           status: "pending",
           idempotencyKey: overrideKey,
-        });
+        }).save({ session });
         created.push(overrideCommission);
       }
     }
@@ -115,11 +118,11 @@ async function generateCommissionsForOrder(order) {
  * Paid commissions are marked "reversed" rather than deleted, preserving the
  * audit trail; pending/approved ones are simply cancelled.
  */
-async function reverseCommissionsForOrder(orderId) {
-  const commissions = await Commission.find({ order: orderId });
+async function reverseCommissionsForOrder(orderId, { session = null } = {}) {
+  const commissions = await Commission.find({ order: orderId }).session(session);
   for (const c of commissions) {
     c.status = c.status === "paid" ? "reversed" : "cancelled";
-    await c.save();
+    await c.save({ session });
   }
   return commissions;
 }

@@ -2,11 +2,13 @@ const crypto = require("crypto");
 const Order = require("../models/Order");
 const Product = require("../models/Product");
 const User = require("../models/User");
-const Commission = require("../models/Commission");
+const mongoose = require("mongoose");
+const PaymentReceipt = require("../models/PaymentReceipt");
 const ApiError = require("../utils/ApiError");
 const asyncHandler = require("../utils/asyncHandler");
-const { verifyFlutterwaveTransaction } = require("../services/paymentService");
-const { generateCommissionsForOrder, reverseCommissionsForOrder } = require("../services/commissionService");
+const { verifyOrderPayment } = require("../services/onlinePaymentService");
+const { minorUnits } = require("../utils/paymentMoney");
+const { reverseCommissionsForOrder } = require("../services/commissionService");
 
 // Creates a pending order from selling-price snapshots taken server-side —
 // the frontend sends product IDs and quantities only, never prices.
@@ -16,94 +18,86 @@ const { generateCommissionsForOrder, reverseCommissionsForOrder } = require("../
 // this is a plain customer purchase with soldBy = null (no commission).
 exports.createOrder = asyncHandler(async (req, res) => {
   const { items, shippingAddress } = req.body;
-  if (!Array.isArray(items) || items.length === 0) {
-    throw new ApiError(400, "Order must contain at least one item");
+  if (!Array.isArray(items) || items.length === 0 || items.length > 100) {
+    throw new ApiError(400, "Order must contain 1 to 100 items");
   }
-
- // Automatically credit the member who originally referred this buyer
-const buyer = await User.findById(req.user._id).select("referredBy");
-const soldBy = buyer?.referredBy || null;
-
+  const buyer = await User.findById(req.user._id).select("referredBy");
+  const quantities = new Map();
+  for (const item of items) {
+    if (!item || !mongoose.isObjectIdOrHexString(item.productId) ||
+        !Number.isSafeInteger(item.quantity) || item.quantity < 1) {
+      throw new ApiError(400, "Each item requires a valid product ID and positive whole quantity");
+    }
+    const id = String(item.productId).toLowerCase();
+    const quantity = (quantities.get(id) || 0) + item.quantity;
+    if (!Number.isSafeInteger(quantity)) throw new ApiError(400, "Invalid quantity");
+    quantities.set(id, quantity);
+  }
   const orderItems = [];
-  let totalAmount = 0;
-  for (const line of items) {
-    const product = await Product.findById(line.productId).select("+costPrice");
-    if (!product || !product.isActive) throw new ApiError(400, `Product ${line.productId} is unavailable`);
-    if (product.stock < line.quantity) throw new ApiError(400, `${product.name} is out of stock`);
-
-    orderItems.push({
-      product: product._id,
-      name: product.name,
-      quantity: line.quantity,
-      sellingPriceSnapshot: product.sellingPrice,
-      costPriceSnapshot: product.costPrice,
-    });
-    totalAmount += product.sellingPrice * line.quantity;
+  let totalMinor = 0;
+  for (const [productId, quantity] of quantities) {
+    const product = await Product.findById(productId).select("+costPrice");
+    if (!product || !product.isActive) throw new ApiError(400, "Product is unavailable");
+    if (product.stock < quantity) throw new ApiError(400, `${product.name} is out of stock`);
+    const price = minorUnits(product.sellingPrice);
+    if (price == null || price <= 0 || !Number.isFinite(product.costPrice)) {
+      throw new ApiError(400, "Product prices are invalid");
+    }
+    totalMinor += price * quantity;
+    if (!Number.isSafeInteger(totalMinor)) throw new ApiError(400, "Order total is too large");
+    orderItems.push({ product: product._id, name: product.name, quantity,
+      sellingPriceSnapshot: product.sellingPrice, costPriceSnapshot: product.costPrice });
   }
-
+  const paymentReference = `KRG-PAY-${crypto.randomUUID()}`;
   const order = await Order.create({
-    orderNumber: `KRG-${Date.now()}-${crypto.randomBytes(3).toString("hex").toUpperCase()}`,
-    buyer: req.user._id,
-    soldBy,
-    items: orderItems,
-    totalAmount,
-    shippingAddress,
-    status: "pending_payment",
+    orderNumber: `KRG-${Date.now()}-${crypto.randomBytes(6).toString("hex").toUpperCase()}`,
+    buyer: req.user._id, soldBy: buyer?.referredBy || null, items: orderItems,
+    totalAmount: totalMinor / 100, shippingAddress, status: "pending_payment",
+    payment: { provider: "flutterwave", currency: "NGN", expectedReferences: [paymentReference] },
   });
-
-  res.status(201).json({
-    success: true,
-    data: { orderId: order._id, orderNumber: order.orderNumber, totalAmount },
-  });
+  res.status(201).json({ success: true, data: {
+    orderId: order._id, orderNumber: order.orderNumber, totalAmount: order.totalAmount,
+    paymentReference, currency: "NGN",
+  } });
 });
 
-// Called after the frontend redirects back from Flutterwave with a
-// transaction_id. This is the ONLY place an order moves to "paid" — the
-// amount and status are re-verified against Flutterwave's API, never taken
-// from the query string / frontend claim.
-exports.verifyPayment = asyncHandler(async (req, res) => {
-  const { orderId, transactionId } = req.body;
-
-  const order = await Order.findById(orderId).select("+items.costPriceSnapshot");
+exports.createPaymentAttempt = asyncHandler(async (req, res) => {
+  if (!mongoose.isObjectIdOrHexString(req.params.id)) throw new ApiError(400, "Invalid order ID");
+  const order = await Order.findById(req.params.id);
   if (!order) throw new ApiError(404, "Order not found");
-  if (order.buyer.toString() !== req.user._id.toString()) throw new ApiError(403, "Not your order");
-  if (order.status === "paid") {
-    return res.json({ success: true, message: "Order already confirmed", data: { status: order.status } });
+  if (!order.buyer || String(order.buyer) !== String(req.user._id)) throw new ApiError(403, "Not your order");
+  if (order.saleType === "in_store" || order.status !== "pending_payment" || order.payment.verified) {
+    throw new ApiError(409, "This order is not awaiting payment");
   }
-
-  const result = await verifyFlutterwaveTransaction(transactionId);
-
-  if (!result.verified || Math.round(result.amount) !== Math.round(order.totalAmount)) {
-    order.payment.reference = transactionId;
-    order.payment.verified = false;
-    order.payment.raw = result.raw;
-    await order.save();
-    throw new ApiError(400, "Payment could not be verified");
+  if (await PaymentReceipt.exists({ order: order._id })) {
+    throw new ApiError(409, "Payment already received. Do not pay again; contact support for review.");
   }
+  const paymentReference = `KRG-PAY-${crypto.randomUUID()}`;
+  const updated = await Order.findOneAndUpdate({ _id: order._id, status: "pending_payment",
+    "payment.verified": { $ne: true } }, { $push: { "payment.expectedReferences": paymentReference } }, { new: true });
+  if (!updated) throw new ApiError(409, "Order changed; refresh before paying");
+  res.json({ success: true, data: { paymentReference, totalAmount: updated.totalAmount, currency: "NGN" } });
+});
 
-  order.status = "paid";
-  order.payment = {
-    provider: "flutterwave",
-    reference: result.reference,
-    verified: true,
-    verifiedAt: new Date(),
-    raw: result.raw,
-  };
-  await order.save();
-
-  // Decrement stock now that payment is confirmed
-  for (const item of order.items) {
-    await Product.findByIdAndUpdate(item.product, { $inc: { stock: -item.quantity } });
-  }
-
-  await generateCommissionsForOrder(order);
-
-  res.json({ success: true, data: { status: order.status } });
+exports.verifyPayment = asyncHandler(async (req, res) => {
+  const data = await verifyOrderPayment(req.body, req.user._id);
+  res.json({ success: true, data });
 });
 
 exports.myOrders = asyncHandler(async (req, res) => {
   const orders = await Order.find({ buyer: req.user._id }).sort({ createdAt: -1 });
-  res.json({ success: true, data: orders });
+  const receipts = await PaymentReceipt.find({ order: { $in: orders.map(o => o._id) }, resolutionRequired: true });
+  const received = new Set(receipts.map(r => String(r.order)));
+  const data = orders.map(order => {
+    const obj = order.toObject();
+    if (received.has(String(order._id)) && order.status === "pending_payment") {
+      obj.status = "payment_review";
+      obj.payment.verified = true;
+      obj.payment.resolutionRequired = true;
+    }
+    return obj;
+  });
+  res.json({ success: true, data });
 });
 
 exports.cancelMyOrder = asyncHandler(async (req, res) => {
@@ -113,7 +107,7 @@ exports.cancelMyOrder = asyncHandler(async (req, res) => {
     throw new ApiError(404, "Order not found");
   }
 
-  if (order.buyer.toString() !== req.user._id.toString()) {
+  if (!order.buyer || order.buyer.toString() !== req.user._id.toString()) {
     throw new ApiError(403, "Not your order");
   }
 
@@ -124,8 +118,11 @@ exports.cancelMyOrder = asyncHandler(async (req, res) => {
     );
   }
 
+  const received = await PaymentReceipt.exists({ order: order._id });
+  if (received) throw new ApiError(409, "Payment already received; contact support to resolve this order");
+  const changed = await Order.updateOne({ _id: order._id, status: "pending_payment", "payment.verified": { $ne: true } }, { $set: { status: "cancelled" } });
+  if (changed.modifiedCount !== 1) throw new ApiError(409, "Order changed; refresh before cancelling");
   order.status = "cancelled";
-  await order.save();
 
   res.json({
     success: true,
@@ -151,15 +148,30 @@ exports.adminUpdateOrderStatus = asyncHandler(async (req, res) => {
   const allowed = ["processing", "delivered", "cancelled", "refunded"];
   if (!allowed.includes(status)) throw new ApiError(400, "Invalid status");
 
-  const order = await Order.findById(req.params.id);
-  if (!order) throw new ApiError(404, "Order not found");
-
-  order.status = status;
-  await order.save();
-
-  if (status === "cancelled" || status === "refunded") {
-    await reverseCommissionsForOrder(order._id);
-  }
-
+  const order = await mongoose.connection.transaction(async session => {
+    const current = await Order.findById(req.params.id).session(session);
+    if (!current) throw new ApiError(404, "Order not found");
+    const unresolved = await PaymentReceipt.exists({ order: current._id, resolutionRequired: true }).session(session);
+    if (["processing", "delivered"].includes(status) &&
+        (unresolved || current.payment.resolutionRequired || !["paid", "processing", "delivered"].includes(current.status))) {
+      throw new ApiError(409, "Resolve the payment and inventory before fulfilling this order");
+    }
+    if (current.status === "payment_review" && status === "cancelled") {
+      throw new ApiError(409, "Payment was received; resolve it or record the completed manual refund");
+    }
+    current.status = status;
+    if (status === "refunded") {
+      current.payment.resolutionRequired = false;
+      current.payment.resolutionReason = "manual_refund_recorded";
+      await PaymentReceipt.updateMany({ order: current._id }, { $set: {
+        resolutionRequired: false, resolutionReason: "manual_refund_recorded",
+      } }, { session });
+    }
+    await current.save({ session });
+    if (status === "cancelled" || status === "refunded") {
+      await reverseCommissionsForOrder(current._id, { session });
+    }
+    return current;
+  }, { readPreference: "primary", readConcern: { level: "snapshot" }, writeConcern: { w: "majority" } });
   res.json({ success: true, data: order });
 });
