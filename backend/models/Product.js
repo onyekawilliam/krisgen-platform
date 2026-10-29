@@ -11,6 +11,9 @@ const productSchema = new mongoose.Schema(
     },
     model: { type: String, required: true, trim: true },
     images: [{ type: String }],
+    // Public images remain in `images` for backwards compatibility. Only the
+    // admin API selects this Cloudinary identifier for safe asset cleanup.
+    imagePublicId: { type: String, select: false },
 
     ram: { type: String },
     storage: { type: String },

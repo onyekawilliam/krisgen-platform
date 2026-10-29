@@ -11,6 +11,7 @@ const Order = require("../models/Order");
 const Referral = require("../models/Referral");
 const Commission = require("../models/Commission");
 const { recordInStoreSale } = require("../services/inStoreSaleService");
+const cloudinaryImages = require("../services/cloudinaryImageService");
 
 // Only an isolated replica set and local HTTP server are used. Neither .env nor
 // payment-provider services are loaded by this suite.
@@ -70,9 +71,18 @@ async function request(method, path, body) {
   return { status: response.status, body: await response.json() };
 }
 
-async function storedProduct() { return Product.findById(product._id).select("+costPrice"); }
+async function storedProduct() { return Product.findById(product._id).select("+costPrice +imagePublicId"); }
 const productPath = () => "/api/products/admin/" + product._id;
 const settingsPath = "/api/commissions/admin/settings";
+
+async function uploadImage(path, { mime = "image/png", bytes = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]), userId = admin?._id } = {}) {
+  const form = new FormData();
+  form.append("image", new Blob([bytes], { type: mime }), "phone-image.png");
+  const headers = {};
+  if (userId) headers.Authorization = "Bearer " + jwt.sign({ id: String(userId) }, process.env.JWT_SECRET);
+  const response = await fetch(baseUrl + path, { method: "POST", headers, body: form });
+  return { status: response.status, body: await response.json() };
+}
 
 // A one-use barrier makes both transactions establish snapshots before either
 // creates settings. Transaction callback retries pass straight through it.
@@ -387,6 +397,102 @@ test("product override query updates cannot bypass percentage validation", async
   assert.equal((await storedProduct()).commissionRateOverride, 100);
   await Product.updateOne({ _id: product._id }, { $set: { commissionRateOverride: null } });
   assert.equal((await storedProduct()).commissionRateOverride, null);
+});
+
+test("product image upload requires authentication and admin authorization", async () => {
+  const unauthenticated = await uploadImage(productPath() + "/image", { userId: null });
+  assert.equal(unauthenticated.status, 401);
+  const customer = await member("Image Upload Customer");
+  const forbidden = await uploadImage(productPath() + "/image", { userId: customer._id });
+  assert.equal(forbidden.status, 403);
+  assert.deepEqual((await storedProduct()).images, []);
+});
+
+test("product image upload rejects unsupported, spoofed and oversized image files", async () => {
+  const unsupported = await uploadImage(productPath() + "/image", { mime: "text/plain" });
+  assert.equal(unsupported.status, 400);
+  const spoofed = await uploadImage(productPath() + "/image", { bytes: Buffer.from("not an image") });
+  assert.equal(spoofed.status, 400);
+  const oversized = await uploadImage(productPath() + "/image", {
+    bytes: Buffer.concat([Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]), Buffer.alloc(5 * 1024 * 1024)]),
+  });
+  assert.equal(oversized.status, 413);
+  assert.deepEqual((await storedProduct()).images, []);
+});
+
+test("product image upload stores the secure URL and Cloudinary public ID", async () => {
+  const originalUpload = cloudinaryImages.uploadProductImage;
+  cloudinaryImages.uploadProductImage = async () => ({
+    secureUrl: "https://res.cloudinary.com/test-cloud/image/upload/phone.png",
+    publicId: "krisgen/products/phone-test",
+  });
+  try {
+    const response = await uploadImage(productPath() + "/image");
+    assert.equal(response.status, 200);
+    const saved = await storedProduct();
+    assert.equal(saved.images[0], "https://res.cloudinary.com/test-cloud/image/upload/phone.png");
+    assert.equal(saved.imagePublicId, "krisgen/products/phone-test");
+    const publicResponse = await fetch(baseUrl + "/api/products/" + product._id);
+    const publicBody = await publicResponse.json();
+    assert.equal(publicBody.data.images[0], saved.images[0]);
+    assert.equal(Object.hasOwn(publicBody.data, "imagePublicId"), false);
+  } finally {
+    cloudinaryImages.uploadProductImage = originalUpload;
+  }
+});
+
+test("Cloudinary upload failures return a clear error and leave the product unchanged", async () => {
+  const originalUpload = cloudinaryImages.uploadProductImage;
+  cloudinaryImages.uploadProductImage = async () => { throw new Error("mock provider failure"); };
+  try {
+    const response = await uploadImage(productPath() + "/image");
+    assert.equal(response.status, 502);
+    assert.match(response.body.message, /Cloudinary could not store the product image/i);
+    assert.deepEqual((await storedProduct()).images, []);
+  } finally {
+    cloudinaryImages.uploadProductImage = originalUpload;
+  }
+});
+
+test("replacing and deleting product images preserve shared Cloudinary assets", async () => {
+  const sharedProduct = await Product.create(productBody({
+    name: "Another image reference", images: ["https://res.cloudinary.com/test-cloud/image/upload/shared.png"],
+  }));
+  sharedProduct.imagePublicId = "krisgen/products/shared";
+  await sharedProduct.save();
+  product.images = ["https://res.cloudinary.com/test-cloud/image/upload/old.png"];
+  product.imagePublicId = "krisgen/products/shared";
+  await product.save();
+  await Product.create(productBody({
+    name: "Legacy URL reference", images: ["https://res.cloudinary.com/test-cloud/image/upload/old.png"],
+  }));
+
+  const originalUpload = cloudinaryImages.uploadProductImage;
+  const originalDelete = cloudinaryImages.deleteProductImage;
+  const deleted = [];
+  cloudinaryImages.uploadProductImage = async () => ({
+    secureUrl: "https://res.cloudinary.com/test-cloud/image/upload/new.png",
+    publicId: "krisgen/products/new",
+  });
+  cloudinaryImages.deleteProductImage = async (publicId) => { deleted.push(publicId); return { result: "ok" }; };
+  try {
+    const replacement = await uploadImage(productPath() + "/image");
+    assert.equal(replacement.status, 200);
+    assert.deepEqual(deleted, [], "shared old asset is retained");
+
+    const removed = await fetch(baseUrl + productPath() + "/image", {
+      method: "DELETE",
+      headers: { Authorization: "Bearer " + jwt.sign({ id: String(admin._id) }, process.env.JWT_SECRET) },
+    });
+    assert.equal(removed.status, 200);
+    assert.deepEqual(deleted, ["krisgen/products/new"], "unreferenced current asset is removed");
+    assert.equal((await storedProduct()).images.length, 0);
+    assert.equal((await Product.findById(sharedProduct._id).select("+imagePublicId")).imagePublicId,
+      "krisgen/products/shared");
+  } finally {
+    cloudinaryImages.uploadProductImage = originalUpload;
+    cloudinaryImages.deleteProductImage = originalDelete;
+  }
 });
 
 test("admin commission list traces registered and walk-in commissions to their saved orders", async () => {

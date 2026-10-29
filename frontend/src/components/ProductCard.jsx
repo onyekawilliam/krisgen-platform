@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import ProductImage from "./ProductImage";
 
 function naira(n) {
   return "₦" + Number(n).toLocaleString("en-NG");
@@ -7,6 +8,9 @@ function naira(n) {
 export default function ProductCard({ product }) {
   return (
     <div className="card flex flex-col gap-2.5">
+      <div className="aspect-square rounded-md overflow-hidden">
+        <ProductImage src={product.images?.[0]} alt={product.name} className="h-full w-full object-contain" />
+      </div>
       <div className="flex justify-between items-center">
         <span className="text-[11px] uppercase tracking-wide text-teal font-semibold">{product.brand}</span>
         <span className="text-[11px] text-ink-faint">{product.stock > 0 ? "In stock" : "Out of stock"}</span>

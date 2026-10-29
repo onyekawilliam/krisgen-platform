@@ -3,6 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import api from "../../api/axios";
 import { useAuth } from "../../context/AuthContext";
 import { useFlutterwave, closePaymentModal } from "flutterwave-react-v3";
+import ProductImage from "../../components/ProductImage";
 
 
 function naira(n) {
@@ -149,11 +150,7 @@ async function handleBuy() {
   return (
     <div className="max-w-4xl mx-auto px-5 py-10 grid md:grid-cols-2 gap-10">
       <div className="card aspect-square flex items-center justify-center text-ink-faint text-sm">
-        {product.images?.[0] ? (
-          <img src={product.images[0]} alt={product.name} className="rounded-md" />
-        ) : (
-          "No image uploaded"
-        )}
+        <ProductImage src={product.images?.[0]} alt={product.name} className="h-full w-full object-contain rounded-md" />
       </div>
       <div>
         <span className="text-xs uppercase tracking-wide text-teal font-semibold">{product.brand}</span>

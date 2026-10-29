@@ -2,6 +2,7 @@ const Product = require("../models/Product");
 const ApiError = require("../utils/ApiError");
 const asyncHandler = require("../utils/asyncHandler");
 const { validStock, validRate } = require("../utils/numericIntegrity");
+const cloudinaryImages = require("../services/cloudinaryImageService");
 
 const productFields = new Set(["name", "brand", "model", "images", "ram", "storage", "colors",
   "specifications", "description", "costPrice", "sellingPrice", "stock", "isActive", "commissionRateOverride"]);
@@ -50,12 +51,12 @@ exports.getProduct = asyncHandler(async (req, res) => {
 // ----- Admin only below -----
 
 exports.adminListProducts = asyncHandler(async (req, res) => {
-  const products = await Product.find().select("+costPrice").sort({ createdAt: -1 });
+  const products = await Product.find().select("+costPrice +imagePublicId").sort({ createdAt: -1 });
   res.json({ success: true, data: products });
 });
 
 exports.adminGetProduct = asyncHandler(async (req, res) => {
-  const product = await Product.findById(req.params.id).select("+costPrice");
+  const product = await Product.findById(req.params.id).select("+costPrice +imagePublicId");
   if (!product) throw new ApiError(404, "Product not found");
   res.json({ success: true, data: product });
 });
@@ -76,17 +77,24 @@ exports.createProduct = asyncHandler(async (req, res) => {
 
 exports.updateProduct = asyncHandler(async (req, res) => {
   validateProductChanges(req.body);
-  const product = await Product.findById(req.params.id).select("+costPrice");
+  const product = await Product.findById(req.params.id).select("+costPrice +imagePublicId");
   if (!product) throw new ApiError(404, "Product not found");
 
+  const previousPublicId = product.imagePublicId;
+  const previousImageUrl = product.images?.[0];
   Object.assign(product, req.body);
+  if (Object.hasOwn(req.body, "images")) product.imagePublicId = undefined;
 
   if (product.costPrice >= product.sellingPrice) {
     throw new ApiError(400, "Selling price must be greater than cost price");
   }
 
   await product.save();
-  res.json({ success: true, data: product });
+  let cleanupWarning = null;
+  if (Object.hasOwn(req.body, "images") && previousPublicId) {
+    cleanupWarning = await deleteCloudinaryImageIfUnused(previousPublicId, previousImageUrl);
+  }
+  res.json({ success: true, data: product, ...(cleanupWarning ? { warning: cleanupWarning } : {}) });
 });
 
 exports.deactivateProduct = asyncHandler(async (req, res) => {
@@ -95,4 +103,119 @@ exports.deactivateProduct = asyncHandler(async (req, res) => {
   product.isActive = false;
   await product.save();
   res.json({ success: true, message: "Product deactivated" });
+});
+
+function validateProductImage(file) {
+  if (!file || !Buffer.isBuffer(file.buffer) || file.buffer.length === 0) {
+    throw new ApiError(400, "Choose an image file to upload");
+  }
+  if (file.size > 5 * 1024 * 1024 || file.buffer.length > 5 * 1024 * 1024) {
+    throw new ApiError(413, "Product images must be 5 MB or smaller");
+  }
+
+  const bytes = file.buffer;
+  const detected = bytes.length >= 8 && bytes.subarray(0, 8).equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]))
+    ? "image/png"
+    : bytes.length >= 3 && bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff
+      ? "image/jpeg"
+      : bytes.length >= 6 && ["GIF87a", "GIF89a"].includes(bytes.subarray(0, 6).toString("ascii"))
+        ? "image/gif"
+        : bytes.length >= 12 && bytes.subarray(0, 4).toString("ascii") === "RIFF" && bytes.subarray(8, 12).toString("ascii") === "WEBP"
+          ? "image/webp"
+          : bytes.length >= 12 && bytes.subarray(4, 8).toString("ascii") === "ftyp" &&
+              ["avif", "avis"].includes(bytes.subarray(8, 12).toString("ascii"))
+            ? "image/avif"
+            : null;
+
+  if (!detected || file.mimetype !== detected) {
+    throw new ApiError(400, "Upload a valid JPEG, PNG, WebP, GIF, or AVIF image");
+  }
+}
+
+async function storeProductImage(file) {
+  validateProductImage(file);
+  let asset;
+  try {
+    asset = await cloudinaryImages.uploadProductImage(file.buffer);
+  } catch (error) {
+    if (error.statusCode) throw error;
+    throw new ApiError(502, "Cloudinary could not store the product image. Please try again.");
+  }
+  if (typeof asset?.secureUrl !== "string" || !asset.secureUrl.startsWith("https://") ||
+      typeof asset?.publicId !== "string" || !asset.publicId) {
+    throw new ApiError(502, "Cloudinary returned incomplete image details. Please try again.");
+  }
+  return asset;
+}
+
+async function deleteCloudinaryImageIfUnused(publicId, imageUrl) {
+  if (!publicId) return null;
+  try {
+    const references = [{ imagePublicId: publicId }];
+    if (imageUrl) references.push({ images: imageUrl });
+    if (await Product.exists({ $or: references })) return null;
+    await cloudinaryImages.deleteProductImage(publicId);
+    return null;
+  } catch {
+    return "The product image changed, but its unused Cloudinary copy could not be removed.";
+  }
+}
+
+async function removeNewAssetAfterFailure(publicId, imageUrl) {
+  if (!publicId) return;
+  try {
+    const references = [{ imagePublicId: publicId }];
+    if (imageUrl) references.push({ images: imageUrl });
+    if (!(await Product.exists({ $or: references }))) {
+      await cloudinaryImages.deleteProductImage(publicId);
+    }
+  } catch {
+    // Preserve the original product-save error; cleanup is best-effort.
+  }
+}
+
+function setPrimaryImage(product, asset) {
+  const images = Array.isArray(product.images) ? [...product.images] : [];
+  if (images.length) images[0] = asset.secureUrl;
+  else images.push(asset.secureUrl);
+  product.images = images;
+  product.imagePublicId = asset.publicId;
+}
+
+exports.uploadProductImage = asyncHandler(async (req, res) => {
+  if (!req.file) throw new ApiError(400, "Choose an image file to upload");
+  const product = await Product.findById(req.params.id).select("+imagePublicId");
+  if (!product) throw new ApiError(404, "Product not found");
+
+  const asset = await storeProductImage(req.file);
+  const previousPublicId = product.imagePublicId;
+  const previousImageUrl = product.images?.[0];
+  setPrimaryImage(product, asset);
+  try {
+    await product.save();
+  } catch (error) {
+    await removeNewAssetAfterFailure(asset.publicId, asset.secureUrl);
+    throw error;
+  }
+
+  const cleanupWarning = previousPublicId && previousPublicId !== asset.publicId
+    ? await deleteCloudinaryImageIfUnused(previousPublicId, previousImageUrl)
+    : null;
+  res.json({ success: true, data: product, ...(cleanupWarning ? { warning: cleanupWarning } : {}) });
+});
+
+exports.deleteProductImage = asyncHandler(async (req, res) => {
+  const product = await Product.findById(req.params.id).select("+imagePublicId");
+  if (!product) throw new ApiError(404, "Product not found");
+
+  const previousPublicId = product.imagePublicId;
+  const previousImageUrl = product.images?.[0];
+  const images = Array.isArray(product.images) ? [...product.images] : [];
+  images.shift();
+  product.images = images;
+  product.imagePublicId = undefined;
+  await product.save();
+
+  const cleanupWarning = await deleteCloudinaryImageIfUnused(previousPublicId, previousImageUrl);
+  res.json({ success: true, data: product, ...(cleanupWarning ? { warning: cleanupWarning } : {}) });
 });

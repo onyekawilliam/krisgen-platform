@@ -77,11 +77,20 @@ Configure these values in Render's Environment settings (never commit them):
 | `FLW_SECRET_KEY` | Yes | Flutterwave **live** secret key. |
 | `FLW_VERIFY_URL` | Yes | Flutterwave **live** transaction-verification endpoint. |
 | `COOKIE_SAME_SITE` | Yes for separate Vercel/Render domains | Set to `none`; the API then requires HTTPS secure cookies. Use `lax` only when the frontend and API are hosted on same-site custom subdomains. |
+| `CLOUDINARY_CLOUD_NAME` | Yes for product image uploads | Cloud name from Cloudinary Console. |
+| `CLOUDINARY_API_KEY` | Yes for product image uploads | API key from Cloudinary Console → Settings → API Keys. |
+| `CLOUDINARY_API_SECRET` | Yes for product image uploads | API secret from Cloudinary Console → Settings → API Keys. Keep this only on Render. |
 | `JWT_EXPIRES_IN` | Optional | JWT lifetime; defaults to seven days. |
 | `COOKIE_NAME` | Optional | Auth-cookie name; defaults to `krisgen_token`. |
 
 The API verifies every Flutterwave result directly with Flutterwave using `FLW_SECRET_KEY`; no Flutterwave secret is
 sent to the browser. Do not use sandbox/test payment credentials in the production Render service.
+
+Product images upload through the authenticated admin API to Cloudinary's `krisgen/products` folder. The backend
+keeps the Cloudinary API secret server-side and stores each image's secure URL and public ID with the product.
+Obtain all three values in Cloudinary Console → Settings → API Keys (the cloud name is also shown on the Dashboard),
+then add them to the Render service's Environment settings. Do not add Cloudinary credentials to Vercel or any
+`VITE_` variable. The product upload endpoint accepts JPEG, PNG, WebP, GIF, or AVIF images up to 5 MB.
 
 ### Vercel environment variables
 
