@@ -25,6 +25,11 @@ exports.protect = asyncHandler(async (req, res, next) => {
   const user = await User.findById(decoded.id);
   if (!user) throw new ApiError(401, "User no longer exists");
   if (user.status === "suspended") throw new ApiError(403, "Account suspended");
+  // A password change (such as a reset) signs out every older session. JWT
+  // times are whole seconds, so compare at that precision.
+  if (user.passwordChangedAt && decoded.iat < Math.floor(user.passwordChangedAt.getTime() / 1000)) {
+    throw new ApiError(401, "Your password was changed. Please log in again.");
+  }
 
   req.user = user;
   next();

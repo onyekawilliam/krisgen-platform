@@ -54,6 +54,11 @@ export default function Register() {
 
         {error && <p className="text-coral text-sm">{error}</p>}
 
+        <p className="text-ink-faint text-xs">
+          By creating an account you agree to our <Link to="/terms" className="text-teal">Terms of use</Link> and{" "}
+          <Link to="/privacy" className="text-teal">Privacy policy</Link>.
+        </p>
+
         <button type="submit" disabled={loading} className="btn-primary mt-2 disabled:opacity-50">
           {loading ? "Creating account…" : "Create free account"}
         </button>

@@ -22,6 +22,9 @@ const userSchema = new mongoose.Schema(
     // member conflict and are serialised instead of both passing the balance check.
     withdrawalSeq: { type: Number, default: 0, select: false },
 
+    // Sessions issued before this moment are no longer valid (set on every password change).
+    passwordChangedAt: { type: Date, default: null },
+
     passwordResetToken: { type: String, select: false },
     passwordResetExpires: { type: Date, select: false },
   },
@@ -31,6 +34,7 @@ const userSchema = new mongoose.Schema(
 userSchema.pre("save", async function (next) {
   if (!this.isModified("passwordHash")) return next();
   this.passwordHash = await bcrypt.hash(this.passwordHash, 10);
+  if (!this.isNew) this.passwordChangedAt = new Date();
   next();
 });
 

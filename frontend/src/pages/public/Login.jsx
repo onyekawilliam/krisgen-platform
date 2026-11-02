@@ -38,6 +38,7 @@ export default function Login() {
         <div>
           <label className="label">Password</label>
           <input type="password" className="input" required value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} />
+          <Link to="/forgot-password" className="text-teal text-xs mt-1.5 inline-block">Forgot your password?</Link>
         </div>
 
         {error && <p className="text-coral text-sm">{error}</p>}

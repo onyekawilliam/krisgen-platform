@@ -5,6 +5,7 @@ const Referral = require("../models/Referral");
 const ApiError = require("../utils/ApiError");
 const asyncHandler = require("../utils/asyncHandler");
 const { isString, requireString } = require("../utils/inputGuards");
+const mailer = require("../services/emailService");
 
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -136,6 +137,17 @@ exports.updateProfile = asyncHandler(async (req, res) => {
   res.json({ success: true, data: publicUser(req.user) });
 });
 
+// The link is only ever sent by email. The one exception is local development
+// with no mail provider set up, where it is printed to this server's own console
+// so the flow can be tried; that branch never runs in production.
+async function deliverResetEmail(user, link) {
+  if (!mailer.isConfigured() && process.env.NODE_ENV === "development") {
+    console.log(`[dev only] Password reset link for ${user.email}: ${link}`);
+    return;
+  }
+  await mailer.sendEmail({ to: user.email, ...mailer.passwordResetMessage({ name: user.name, link }) });
+}
+
 exports.forgotPassword = asyncHandler(async (req, res) => {
   const { email } = req.body;
   const user = isString(email) ? await User.findOne({ email: email.trim().toLowerCase() }) : null;
@@ -144,7 +156,12 @@ exports.forgotPassword = asyncHandler(async (req, res) => {
   if (user) {
     const rawToken = user.createPasswordResetToken();
     await user.save({ validateBeforeSave: false });
-    // TODO: send `rawToken` via email/SMS provider. Never log/return it.
+    const link = `${(process.env.CLIENT_URL || "").replace(/\/+$/, "")}/reset-password?token=${rawToken}`;
+    // Not awaited: a slow or failing mail provider must not change how long the
+    // request takes, which would reveal whether the account exists. The token
+    // is never logged or returned in the response.
+    deliverResetEmail(user, link).catch(error =>
+      console.error(`Password reset email for user ${user._id} was not sent: ${error.message}`));
   }
   res.json({ success: true, message: "If that account exists, a reset link has been sent." });
 });

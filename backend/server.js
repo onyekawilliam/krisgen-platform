@@ -18,6 +18,7 @@ const commissionRoutes = require("./routes/commissionRoutes");
 const referralRoutes = require("./routes/referralRoutes");
 const withdrawalRoutes = require("./routes/withdrawalRoutes");
 const adminRoutes = require("./routes/adminRoutes");
+const webhookRoutes = require("./routes/webhookRoutes");
 
 function validateProductionConfig() {
   if (process.env.NODE_ENV !== "production") return;
@@ -28,6 +29,13 @@ function validateProductionConfig() {
   }
   if (!/^https:\/\//.test(process.env.CLIENT_URL)) {
     throw new Error("CLIENT_URL must be an HTTPS frontend origin in production");
+  }
+  // Not fatal, so an existing deployment keeps starting, but worth flagging.
+  if (!process.env.FLW_SECRET_HASH) {
+    console.warn("FLW_SECRET_HASH is not set: payments made after the buyer closes the page will not be confirmed automatically.");
+  }
+  if (!process.env.RESEND_API_KEY || !process.env.EMAIL_FROM) {
+    console.warn("RESEND_API_KEY / EMAIL_FROM are not set: password-reset emails will not be sent.");
   }
 }
 
@@ -69,6 +77,7 @@ app.use("/api/commissions", commissionRoutes);
 app.use("/api/referrals", referralRoutes);
 app.use("/api/withdrawals", withdrawalRoutes);
 app.use("/api/admin", adminRoutes);
+app.use("/api/webhooks", webhookRoutes);
 
 app.use((req, res) => res.status(404).json({ success: false, message: "Route not found" }));
 app.use(errorHandler);

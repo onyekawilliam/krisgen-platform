@@ -78,6 +78,9 @@ Configure these values in Render's Environment settings (never commit them):
 | `JWT_SECRET` | Yes | Long, random signing secret. |
 | `FLW_SECRET_KEY` | Yes | Flutterwave **live** secret key. |
 | `FLW_VERIFY_URL` | Yes | Flutterwave **live** transaction-verification endpoint. |
+| `FLW_SECRET_HASH` | Strongly recommended | A secret you invent and also enter as the "Secret hash" in the Flutterwave webhook settings (see below). Without it, a customer who pays and closes the page before confirmation is not fulfilled automatically. |
+| `RESEND_API_KEY` | For password-reset emails | API key from [resend.com](https://resend.com). |
+| `EMAIL_FROM` | For password-reset emails | Sender address on a domain you verified in Resend, e.g. `Krisgen <no-reply@yourdomain.com>`. |
 | `COOKIE_SAME_SITE` | Yes for separate Vercel/Render domains | Set to `none`; the API then requires HTTPS secure cookies. Use `lax` only when the frontend and API are hosted on same-site custom subdomains. |
 | `CLOUDINARY_CLOUD_NAME` | Yes for product image uploads | Cloud name from Cloudinary Console. |
 | `CLOUDINARY_API_KEY` | Yes for product image uploads | API key from Cloudinary Console → Settings → API Keys. |
@@ -113,6 +116,31 @@ using a controlled live transaction. Do not seed or reset the production databas
 Browsers increasingly restrict third-party cookies. For the most reliable login behavior, attach custom frontend and
 API subdomains beneath the same parent domain and set `COOKIE_SAME_SITE=lax`; otherwise use the configured
 cross-site `none` setting over HTTPS.
+
+### Flutterwave webhook (confirms payments even if the buyer closes the page)
+
+1. Invent a long random string and set it in Render as `FLW_SECRET_HASH`.
+2. In the Flutterwave dashboard open **Settings → Webhooks** and set the URL to
+   `https://<your-render-api-origin>/api/webhooks/flutterwave` and the **Secret hash** to the same string.
+3. Make sure charge/transaction events are enabled, then save.
+
+The webhook only tells the API *which* transaction to look at. The amount, currency and reference are always
+re-read from Flutterwave, and the order goes through the same transaction as the buyer's own confirmation, so a
+payment confirmed twice (webhook and browser, or Flutterwave retrying) still deducts stock and creates
+commissions exactly once. Without `FLW_SECRET_HASH` the endpoint answers 503 and the API logs a warning at startup.
+
+### Password-reset emails
+
+Create a [Resend](https://resend.com) account, verify a sending domain, then set `RESEND_API_KEY` and `EMAIL_FROM`
+in Render. The reset link points at `CLIENT_URL/reset-password`, works for one hour and can be used once, and a
+reset signs out every older session. When these are not set, no email is sent (the API logs a warning); in local
+development with `NODE_ENV=development` the link is printed in the API console instead so you can try the flow.
+
+### Legal pages
+
+`/terms`, `/privacy` and `/refunds` are written from how the site actually behaves, but they are drafts and show a
+notice saying so. After they have been reviewed, set `LEGAL_PAGES_ARE_DRAFT` to `false` in
+`frontend/src/components/LegalPage.jsx`.
 
 ## API overview
 
