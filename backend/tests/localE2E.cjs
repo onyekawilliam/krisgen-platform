@@ -217,7 +217,7 @@ async function cleanup() {
     await page.locator("table tbody tr").filter({ hasText: "E2E Phone" }).waitFor();
     assert.equal((await context.request.get(apiUrl + "/products/admin/all")).status(), 200);
     const row = page.locator("table tbody tr").filter({ hasText: "E2E Phone" });
-    assert.equal((await row.locator("td").nth(6).innerText()).trim(), "4");
+    assert.equal((await row.locator("td").nth(7).innerText()).trim(), "4");
     await page.getByRole("link", { name: "Commissions", exact: true }).click();
     await page.locator("table tbody tr").nth(3).waitFor();
     assert.equal(await page.locator("table tbody tr").count(), 4);

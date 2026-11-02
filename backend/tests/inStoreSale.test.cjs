@@ -224,6 +224,7 @@ test("in-store HTTP route requires admin and returns 201 then 200 for replay", a
 test("Flutterwave checkout and verification retain stock and profit commissions", async () => {
   const created = await request("POST", "/api/orders", {
     items: [{ productId: String(product._id), quantity: 2 }],
+    shippingAddress: { fullName: "Customer", phone: "08012345678", address: "1 Test Street", city: "Lagos", state: "Lagos" },
   }, customer._id);
   assert.equal(created.status, 201);
   assert.equal(created.body.data.currency, "NGN");
@@ -248,6 +249,7 @@ test("Flutterwave checkout and verification retain stock and profit commissions"
 test("failed Flutterwave verification leaves stock and commissions unchanged", async () => {
   const created = await request("POST", "/api/orders", {
     items: [{ productId: String(product._id), quantity: 2 }],
+    shippingAddress: { fullName: "Customer", phone: "08012345678", address: "1 Test Street", city: "Lagos", state: "Lagos" },
   }, customer._id);
   verificationResult = { verified: false, raw: {} };
   const result = await request("POST", "/api/orders/verify-payment", {

@@ -18,6 +18,10 @@ const userSchema = new mongoose.Schema(
     // Earnings summary (denormalized for fast dashboard reads; source of truth is Commission collection)
     balance: { type: Number, default: 0 }, // withdrawable, i.e. paid-out-eligible commissions not yet withdrawn
 
+    // Bumped inside every withdrawal transaction so two requests from the same
+    // member conflict and are serialised instead of both passing the balance check.
+    withdrawalSeq: { type: Number, default: 0, select: false },
+
     passwordResetToken: { type: String, select: false },
     passwordResetExpires: { type: Date, select: false },
   },

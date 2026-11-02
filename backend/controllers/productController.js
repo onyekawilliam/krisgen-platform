@@ -3,6 +3,8 @@ const ApiError = require("../utils/ApiError");
 const asyncHandler = require("../utils/asyncHandler");
 const { validStock, validRate } = require("../utils/numericIntegrity");
 const cloudinaryImages = require("../services/cloudinaryImageService");
+const Settings = require("../models/Settings");
+const { queryString } = require("../utils/inputGuards");
 
 const productFields = new Set(["name", "brand", "model", "images", "ram", "storage", "colors",
   "specifications", "description", "costPrice", "sellingPrice", "stock", "isActive", "commissionRateOverride"]);
@@ -16,30 +18,67 @@ function validateProductChanges(body) {
   if (Object.hasOwn(body, "commissionRateOverride") && body.commissionRateOverride !== null && !validRate(body.commissionRateOverride)) {
     throw new ApiError(400, "Commission percentage must be between 0 and 100, or null to use the default");
   }
+  for (const field of ["costPrice", "sellingPrice"]) {
+    if (Object.hasOwn(body, field) && !(typeof body[field] === "number" && Number.isFinite(body[field]))) {
+      throw new ApiError(400, `${field} must be a number`);
+    }
+  }
+}
+
+// Prices drive both the customer's total and the commission profit, so a
+// negative cost or a selling price at or below cost is never acceptable.
+function validatePrices(costPrice, sellingPrice) {
+  if (!(costPrice >= 0) || !(sellingPrice > 0)) {
+    throw new ApiError(400, "Cost price cannot be negative and selling price must be above zero");
+  }
+  if (costPrice >= sellingPrice) {
+    throw new ApiError(400, "Selling price must be greater than cost price");
+  }
+}
+
+// The seller's commission and the referrer's override share one profit.
+async function validateCommissionShare(commissionRateOverride) {
+  if (typeof commissionRateOverride !== "number") return;
+  const settings = await Settings.getSettings();
+  if (commissionRateOverride + settings.referralOverrideRate > 100) {
+    throw new ApiError(400, "This commission plus the referral override rate would exceed 100% of profit");
+  }
+}
+
+// Keep paging parameters sane so one request cannot pull the whole catalogue.
+function pagination(query) {
+  const page = Math.max(1, Math.floor(Number(query.page)) || 1);
+  const limit = Math.min(50, Math.max(1, Math.floor(Number(query.limit)) || 20));
+  return { page, limit };
 }
 
 // Public/customer listing — costPrice is excluded at the query level
 // (schema has select:false on it), so it never even reaches this handler
 // unless explicitly requested with admin-only logic below.
 exports.listProducts = asyncHandler(async (req, res) => {
-  const { brand, minPrice, maxPrice, search, page = 1, limit = 20 } = req.query;
+  const brand = queryString(req.query.brand);
+  const search = queryString(req.query.search);
+  const { page, limit } = pagination(req.query);
 
   const query = { isActive: true };
   if (brand && brand !== "All") query.brand = brand;
-  if (minPrice || maxPrice) {
+  const min = Number(queryString(req.query.minPrice));
+  const max = Number(queryString(req.query.maxPrice));
+  if (Number.isFinite(min) || Number.isFinite(max)) {
     query.sellingPrice = {};
-    if (minPrice) query.sellingPrice.$gte = Number(minPrice);
-    if (maxPrice) query.sellingPrice.$lte = Number(maxPrice);
+    if (queryString(req.query.minPrice) && Number.isFinite(min)) query.sellingPrice.$gte = min;
+    if (queryString(req.query.maxPrice) && Number.isFinite(max)) query.sellingPrice.$lte = max;
+    if (!Object.keys(query.sellingPrice).length) delete query.sellingPrice;
   }
   if (search) query.$text = { $search: search };
 
-  const skip = (Number(page) - 1) * Number(limit);
+  const skip = (page - 1) * limit;
   const [products, total] = await Promise.all([
-    Product.find(query).skip(skip).limit(Number(limit)).sort({ createdAt: -1 }),
+    Product.find(query).skip(skip).limit(limit).sort({ createdAt: -1 }),
     Product.countDocuments(query),
   ]);
 
-  res.json({ success: true, data: products, meta: { total, page: Number(page), limit: Number(limit) } });
+  res.json({ success: true, data: products, meta: { total, page, limit } });
 });
 
 exports.getProduct = asyncHandler(async (req, res) => {
@@ -67,9 +106,8 @@ exports.createProduct = asyncHandler(async (req, res) => {
   if (!name || !brand || !model || sellingPrice == null || costPrice == null) {
     throw new ApiError(400, "name, brand, model, sellingPrice and costPrice are required");
   }
-  if (costPrice >= sellingPrice) {
-    throw new ApiError(400, "Selling price must be greater than cost price");
-  }
+  validatePrices(costPrice, sellingPrice);
+  await validateCommissionShare(req.body.commissionRateOverride);
 
   const product = await Product.create({ ...req.body, stock: stock === undefined ? 0 : stock });
   res.status(201).json({ success: true, data: product });
@@ -85,8 +123,9 @@ exports.updateProduct = asyncHandler(async (req, res) => {
   Object.assign(product, req.body);
   if (Object.hasOwn(req.body, "images")) product.imagePublicId = undefined;
 
-  if (product.costPrice >= product.sellingPrice) {
-    throw new ApiError(400, "Selling price must be greater than cost price");
+  validatePrices(product.costPrice, product.sellingPrice);
+  if (Object.hasOwn(req.body, "commissionRateOverride")) {
+    await validateCommissionShare(product.commissionRateOverride);
   }
 
   await product.save();

@@ -8,14 +8,24 @@ function naira(n) {
 export default function AdminWithdrawals() {
   const [withdrawals, setWithdrawals] = useState([]);
   const [filter, setFilter] = useState("");
+  const [error, setError] = useState("");
 
   function load() {
-    api.get("/withdrawals/admin/all", { params: filter ? { status: filter } : {} }).then((res) => setWithdrawals(res.data.data));
+    api
+      .get("/withdrawals/admin/all", { params: filter ? { status: filter } : {} })
+      .then((res) => setWithdrawals(res.data.data))
+      .catch(() => setError("Could not load withdrawals. Refresh to try again."));
   }
   useEffect(load, [filter]);
 
-  async function updateStatus(id, status) {
-    await api.patch(`/withdrawals/admin/${id}`, { status });
+  async function updateStatus(id, status, confirmText) {
+    if (confirmText && !window.confirm(confirmText)) return;
+    setError("");
+    try {
+      await api.patch(`/withdrawals/admin/${id}`, { status });
+    } catch (err) {
+      setError(err.response?.data?.message || "Could not update this withdrawal.");
+    }
     load();
   }
 
@@ -28,6 +38,7 @@ export default function AdminWithdrawals() {
           {["pending", "approved", "rejected", "paid"].map((s) => <option key={s} value={s}>{s}</option>)}
         </select>
       </div>
+      {error && <p className="text-coral text-sm mb-4">{error}</p>}
 
       <table className="w-full text-sm">
         <thead>
@@ -50,11 +61,14 @@ export default function AdminWithdrawals() {
                 {w.status === "pending" && (
                   <>
                     <button onClick={() => updateStatus(w._id, "approved")} className="text-xs border border-navy-line rounded px-2.5 py-1 mr-1.5 hover:border-teal">Approve</button>
-                    <button onClick={() => updateStatus(w._id, "rejected")} className="text-xs border border-navy-line rounded px-2.5 py-1 hover:border-coral hover:text-coral">Reject</button>
+                    <button onClick={() => updateStatus(w._id, "rejected", "Reject this withdrawal? The amount returns to the member's balance.")} className="text-xs border border-navy-line rounded px-2.5 py-1 hover:border-coral hover:text-coral">Reject</button>
                   </>
                 )}
                 {w.status === "approved" && (
-                  <button onClick={() => updateStatus(w._id, "paid")} className="text-xs border border-navy-line rounded px-2.5 py-1 hover:border-gold">Mark paid</button>
+                  <button onClick={() => updateStatus(w._id, "paid", "Confirm you have transferred this amount to the member's bank account. A paid withdrawal cannot be undone.")} className="text-xs border border-navy-line rounded px-2.5 py-1 hover:border-gold">Mark paid</button>
+                )}
+                {w.status === "approved" && (
+                  <button onClick={() => updateStatus(w._id, "rejected", "Reject this approved withdrawal? Only do this if no money has been sent.")} className="text-xs border border-navy-line rounded px-2.5 py-1 ml-1.5 hover:border-coral hover:text-coral">Reject</button>
                 )}
               </td>
             </tr>

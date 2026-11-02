@@ -38,7 +38,9 @@ node seed.js
 ```
 
 This creates an admin using `SEED_ADMIN_EMAIL` / `SEED_ADMIN_PASSWORD` from your `.env` and eight sample
-phones. Set both values explicitly before running the seed script. Do not run the seed script against an
+phones. Set both values explicitly before running the seed script; the password must be at least 12 characters
+and there is no default. If your network cannot resolve `mongodb+srv` addresses, set
+`DNS_SERVERS=8.8.8.8,8.8.4.4` for the seed run. Do not run the seed script against an
 existing production database.
 
 ## Frontend setup
@@ -119,13 +121,26 @@ All endpoints are under `/api`. Auth uses an http-only cookie (`credentials: inc
 | Area | Public | Member (logged in) | Admin |
 |---|---|---|---|
 | Products | browse, view | — | create/edit/deactivate, sees cost price |
-| Orders | — | create, view own, verify payment | view all, update status, record in-store sales |
+| Orders | — | create (needs a delivery address), view own, verify payment | view all, update status, record in-store sales |
 | Referrals | — | view own referral list + link | view all |
-| Commissions | — | view own | view all, approve/reverse/pay, configure rates |
-| Withdrawals | — | request, view own | approve/reject/pay |
+| Commissions | — | view own | view all, approve/reverse, configure rates |
+| Withdrawals | — | request, view own | approve/reject/mark paid |
 | Members | — | — | list, view detail, suspend/reactivate |
 
 See `backend/routes/` for the full route list.
+
+## Money rules
+
+- **Commissions** are approved or reversed by an admin and only move forward: a cancelled or reversed commission
+  can never be brought back, and nothing is settled by hand. A sale at or below cost earns no commission.
+- **Rates** — the direct rate and the referral override rate (and a product's own rate plus the override) are
+  shares of one profit, so each pair is limited to 100% together.
+- **Withdrawals** draw on approved commissions. A member's requests are processed one at a time inside a
+  transaction, so the same balance can never be requested twice. Marking a withdrawal *paid* is the only way a
+  commission is settled; paid and rejected withdrawals are final. Bank account numbers are 10 digits.
+- **Delivery** — checkout requires a full delivery address (name, phone, street, city, state); admins see it on the
+  order.
+- **Cross-site writes** — the API refuses state-changing requests whose `Origin` is not `CLIENT_URL`.
 
 ## Admin in-store sales
 

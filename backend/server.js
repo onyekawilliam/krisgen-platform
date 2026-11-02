@@ -5,9 +5,11 @@ const cors = require("cors");
 const cookieParser = require("cookie-parser");
 const morgan = require("morgan");
 const rateLimit = require("express-rate-limit");
+const helmet = require("helmet");
 
 const connectDB = require("./config/db");
 const errorHandler = require("./middlewares/errorHandler");
+const originCheck = require("./middlewares/originCheck");
 
 const authRoutes = require("./routes/authRoutes");
 const productRoutes = require("./routes/productRoutes");
@@ -37,17 +39,26 @@ const app = express();
 // Render sits behind a reverse proxy. Trust exactly that hop so rate limits and
 // secure cookies use the original client request information.
 if (process.env.NODE_ENV === "production") app.set("trust proxy", 1);
-app.use(cors({ origin: process.env.CLIENT_URL, credentials: true }));
+// A trailing slash on CLIENT_URL would otherwise silently break CORS.
+const clientOrigin = process.env.CLIENT_URL?.replace(/\/+$/, "");
+// The API serves JSON only; images and pages come from Cloudinary and Vercel.
+app.use(helmet({ crossOriginResourcePolicy: { policy: "cross-origin" } }));
+app.use(cors({ origin: clientOrigin, credentials: true }));
+app.use(originCheck(clientOrigin));
 app.use(express.json());
 app.use(cookieParser());
 if (process.env.NODE_ENV !== "test") app.use(morgan("dev"));
 
 // General API rate limit; auth routes get a tighter one to slow brute force.
-app.use("/api", rateLimit({ windowMs: 15 * 60 * 1000, max: 300 }));
+app.use("/api", rateLimit({ windowMs: 15 * 60 * 1000, max: 600 }));
 app.use(
   "/api/auth/login",
-  rateLimit({ windowMs: 15 * 60 * 1000, max: 20, message: "Too many login attempts, try again later." })
+  rateLimit({ windowMs: 15 * 60 * 1000, max: 20, message: { success: false, message: "Too many login attempts, try again later." } })
 );
+
+// Sign-up and password reset can be abused without logging in, so each gets its own cap.
+app.use("/api/auth/register", rateLimit({ windowMs: 60 * 60 * 1000, max: 30, message: { success: false, message: "Too many sign-ups from this network, try again later." } }));
+app.use("/api/auth/forgot-password", rateLimit({ windowMs: 60 * 60 * 1000, max: 10, message: { success: false, message: "Too many reset requests, try again later." } }));
 
 app.get("/api/health", (req, res) => res.json({ success: true, message: "Krisgen API is running" }));
 

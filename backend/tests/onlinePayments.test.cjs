@@ -87,9 +87,11 @@ async function request(method, path, body, userId = buyer._id) {
   return { status: response.status, body: await response.json() };
 }
 
+const shippingAddress = { fullName: "Test Buyer", phone: "08012345678", address: "1 Test Street", city: "Lagos", state: "Lagos" };
+
 async function online({ items, userId } = {}) {
   const response = await request("POST", "/api/orders", {
-    items: items || [{ productId: String(product._id), quantity: 2 }],
+    items: items || [{ productId: String(product._id), quantity: 2 }], shippingAddress,
   }, userId || buyer._id);
   assert.equal(response.status, 201, JSON.stringify(response.body));
   const data = response.body.data;
@@ -445,7 +447,7 @@ test("duplicate product lines are aggregated for stock and the full profit commi
 test("checkout rejects quantities which could increase inventory or create fractional commissions", async () => {
   for (const quantity of [0, -1, 1.5, true, null, "not-a-number", Number.MAX_SAFE_INTEGER + 1]) {
     const response = await request("POST", "/api/orders", {
-      items: [{ productId: String(product._id), quantity }],
+      items: [{ productId: String(product._id), quantity }], shippingAddress,
     });
     assert.equal(response.status, 400, JSON.stringify(response.body));
   }
