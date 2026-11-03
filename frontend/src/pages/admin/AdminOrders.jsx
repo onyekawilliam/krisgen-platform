@@ -421,7 +421,13 @@ export default function AdminOrders() {
             <tr key={o._id} className="border-b border-navy-line">
               <td className="py-2.5 text-ink font-mono">{o.orderNumber}</td>
               <td className="py-2.5 text-ink-dim">
-                {o.buyer?.name || o.walkInCustomer?.name || "Unknown customer"}
+                <div>{o.buyer?.name || o.walkInCustomer?.name || "Unknown customer"}</div>
+                {o.shippingAddress?.address && (
+                  <div className="text-xs text-ink-faint mt-0.5">
+                    Deliver to {o.shippingAddress.fullName}, {o.shippingAddress.address}, {o.shippingAddress.city},{" "}
+                    {o.shippingAddress.state} · {o.shippingAddress.phone}
+                  </div>
+                )}
               </td>
               <td className="py-2.5 text-ink-dim">
                 {o.items?.map((item, index) => (
@@ -440,7 +446,7 @@ export default function AdminOrders() {
                   <button onClick={() => updateStatus(o._id, "delivered")} className="text-xs border border-navy-line rounded px-2.5 py-1 mr-1.5 hover:border-teal">Mark delivered</button>
                 )}
                 {["paid", "processing"].includes(o.status) && (
-                  <button onClick={() => updateStatus(o._id, "cancelled")} className="text-xs border border-navy-line rounded px-2.5 py-1 hover:border-coral hover:text-coral">Cancel</button>
+                  <button onClick={() => window.confirm("Cancel this paid order? Its commissions are cancelled too, and any refund must be sent by you in Flutterwave.") && updateStatus(o._id, "cancelled")} className="text-xs border border-navy-line rounded px-2.5 py-1 hover:border-coral hover:text-coral">Cancel</button>
                 )}
               </td>
             </tr>

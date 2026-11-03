@@ -13,10 +13,13 @@ export default function MyWithdrawals() {
   const [submitting, setSubmitting] = useState(false);
 
   function load() {
-    api.get("/withdrawals/mine").then((res) => {
-      setWithdrawals(res.data.data);
-      setAvailable(res.data.availableBalance);
-    });
+    api
+      .get("/withdrawals/mine")
+      .then((res) => {
+        setWithdrawals(res.data.data);
+        setAvailable(res.data.availableBalance);
+      })
+      .catch(() => setError("Could not load your withdrawals. Refresh to try again."));
   }
 
   useEffect(load, []);
@@ -47,7 +50,7 @@ export default function MyWithdrawals() {
       <form onSubmit={handleSubmit} className="card flex flex-col gap-3 max-w-sm mb-8">
         <div>
           <label className="label">Amount</label>
-          <input type="number" className="input" required min="1" max={available} value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} />
+          <input type="number" className="input" required min="1" max={available} step="0.01" value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} />
         </div>
         <div>
           <label className="label">Bank name</label>
@@ -55,7 +58,7 @@ export default function MyWithdrawals() {
         </div>
         <div>
           <label className="label">Account number</label>
-          <input className="input" required value={form.accountNumber} onChange={(e) => setForm({ ...form, accountNumber: e.target.value })} />
+          <input className="input" required inputMode="numeric" pattern="[0-9]{10}" maxLength={10} title="10-digit account number" value={form.accountNumber} onChange={(e) => setForm({ ...form, accountNumber: e.target.value.replace(/\D/g, "") })} />
         </div>
         <div>
           <label className="label">Account name</label>

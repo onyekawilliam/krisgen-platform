@@ -24,12 +24,6 @@ const Settings = require("../models/Settings");
  *    even if this function is accidentally called more than once for it.
  */
 async function generateCommissionsForOrder(order, { session = null } = {}) {
-
-  // console.log("=== COMMISSION DEBUG ===");
-  // console.log("Order:", order._id);
-  // console.log("soldBy:", order.soldBy);
-  // console.log("Items:", order.items);
-
   if (!order.soldBy) {
     return []; // plain customer purchase — no seller, no commission
   }
@@ -51,18 +45,14 @@ async function generateCommissionsForOrder(order, { session = null } = {}) {
 
     const grossProfitUnit = item.sellingPriceSnapshot - item.costPriceSnapshot;
     const grossProfit = grossProfitUnit * item.quantity;
+    // A sale at or below cost has no profit to share, so it earns nothing
+    // rather than a zero or negative commission.
+    if (!(grossProfit > 0)) continue;
     const commissionAmount = round2(grossProfit * (rate / 100));
 
     const directKey = idKey(order._id, item.product, "direct");
     const existingDirect = await Commission.findOne({ idempotencyKey: directKey }).session(session);
     if (!existingDirect) {
-
-      // // console.log("Creating direct commission:", {
-      //   beneficiary: order.soldBy,
-      //   grossProfit,
-      //   rate,
-      //   commissionAmount,
-      // });
 
       const directCommission = await new Commission({
         order: order._id,
@@ -86,7 +76,11 @@ async function generateCommissionsForOrder(order, { session = null } = {}) {
     const referral = await Referral.findOne({ referred: order.soldBy }).session(session);
     if (referral) {
       const overrideRate = settings.referralOverrideRate;
-      const overrideAmount = round2(grossProfit * (overrideRate / 100));
+      // The direct commission and the override are shares of one profit, so the
+      // override is capped at whatever the direct commission left over.
+      const overrideAmount = Math.max(0, Math.min(
+        round2(grossProfit * (overrideRate / 100)), round2(grossProfit - commissionAmount)
+      ));
       const overrideKey = idKey(order._id, item.product, "override");
       const existingOverride = await Commission.findOne({ idempotencyKey: overrideKey }).session(session);
       if (!existingOverride) {

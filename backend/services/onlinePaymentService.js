@@ -136,6 +136,40 @@ async function fulfill(receiptId) {
   }, transactionOptions);
 }
 
+// Asks Flutterwave about a transaction and stores the answer as a durable
+// receipt, matched to the order that issued its reference (or kept for admin
+// review when no order did). Shared by the buyer's callback and the webhook.
+async function createReceiptFromProvider(id) {
+  const receiptId = `flutterwave:${id}`;
+  let receipt;
+  const verified = await verifyFlutterwaveTransaction(id);
+  if (!verified.verified) throw new ApiError(400, "Payment could not be verified");
+  if (normalizeTransactionId(verified.transactionId) !== id ||
+      typeof verified.reference !== "string" || !verified.reference ||
+      typeof verified.currency !== "string" || !verified.currency ||
+      !Number.isFinite(Number(verified.amount)) || Number(verified.amount) <= 0) {
+    throw new ApiError(502, "Payment provider returned incomplete or inconsistent details");
+  }
+  const owner = await Order.findOne({
+    "payment.expectedReferences": verified.reference, saleType: "online",
+  }).select("_id");
+  const receiptData = {
+    _id: receiptId, transactionId: id, order: owner?._id || null,
+    reference: verified.reference, amount: Number(verified.amount), currency: verified.currency,
+    verifiedAt: new Date(), raw: verified.raw,
+    status: owner ? "received" : "review", resolutionRequired: true,
+    resolutionReason: owner ? "processing_pending" : "unmatched_reference",
+  };
+  try {
+    receipt = await PaymentReceipt.findOneAndUpdate({ _id: receiptId },
+      { $setOnInsert: receiptData }, { upsert: true, new: true });
+  } catch (err) {
+    if (err.code !== 11000) throw err;
+    receipt = await PaymentReceipt.findById(receiptId);
+  }
+  return receipt;
+}
+
 async function verifyOrderPayment({ orderId, transactionId }, buyerId) {
   if (!mongoose.isObjectIdOrHexString(orderId)) throw new ApiError(400, "Invalid order ID");
   const id = normalizeTransactionId(transactionId);
@@ -154,33 +188,7 @@ async function verifyOrderPayment({ orderId, transactionId }, buyerId) {
       !order.payment.expectedReferences?.length) {
     return { status: order.status, paymentReceived: true, requiresResolution: Boolean(order.payment.resolutionRequired) };
   }
-  if (!receipt) {
-    const verified = await verifyFlutterwaveTransaction(id);
-    if (!verified.verified) throw new ApiError(400, "Payment could not be verified");
-    if (normalizeTransactionId(verified.transactionId) !== id ||
-        typeof verified.reference !== "string" || !verified.reference ||
-        typeof verified.currency !== "string" || !verified.currency ||
-        !Number.isFinite(Number(verified.amount)) || Number(verified.amount) <= 0) {
-      throw new ApiError(502, "Payment provider returned incomplete or inconsistent details");
-    }
-    const owner = await Order.findOne({
-      "payment.expectedReferences": verified.reference, saleType: "online",
-    }).select("_id");
-    const receiptData = {
-      _id: receiptId, transactionId: id, order: owner?._id || null,
-      reference: verified.reference, amount: Number(verified.amount), currency: verified.currency,
-      verifiedAt: new Date(), raw: verified.raw,
-      status: owner ? "received" : "review", resolutionRequired: true,
-      resolutionReason: owner ? "processing_pending" : "unmatched_reference",
-    };
-    try {
-      receipt = await PaymentReceipt.findOneAndUpdate({ _id: receiptId },
-        { $setOnInsert: receiptData }, { upsert: true, new: true });
-    } catch (err) {
-      if (err.code !== 11000) throw err;
-      receipt = await PaymentReceipt.findById(receiptId);
-    }
-  }
+  if (!receipt) receipt = await createReceiptFromProvider(id);
   if (!receipt.order || String(receipt.order) !== String(order._id)) {
     throw new ApiError(400, "Payment reference does not match this order. The successful payment has been retained for admin review.");
   }
@@ -207,4 +215,32 @@ async function verifyOrderPayment({ orderId, transactionId }, buyerId) {
   }
 }
 
-module.exports = { verifyOrderPayment };
+// Called by the Flutterwave webhook, with no logged-in buyer. The webhook body
+// is never trusted for amounts or references: only the transaction ID is used,
+// and everything else comes from asking Flutterwave directly. The outcome goes
+// through the same fulfillment transaction as the buyer's own callback, so a
+// webhook racing that callback (or being delivered twice) still deducts stock
+// and creates commissions exactly once.
+async function settleProviderTransaction(rawTransactionId) {
+  const id = normalizeTransactionId(rawTransactionId);
+  if (!id) return { handled: false, reason: "invalid_transaction_id" };
+  const receiptId = `flutterwave:${id}`;
+  const receipt = (await PaymentReceipt.findById(receiptId)) || (await createReceiptFromProvider(id));
+  if (!receipt.order) return { handled: true, reason: "unmatched_reference" };
+  try {
+    const outcome = await fulfill(receiptId);
+    return { handled: true, status: outcome.status };
+  } catch (err) {
+    if (err.statusCode) throw err;
+    const reason = err.reviewReason || "processing_error";
+    try { await markReview(receiptId, reason); } catch { /* receipt stays received/review */ }
+    // Anything but a transient processing error is retained for an admin, so
+    // Flutterwave should not keep resending it. A transient error should be retried.
+    if (reason === "processing_error") {
+      throw new ApiError(503, "Payment received, but order processing could not finish");
+    }
+    return { handled: true, reason };
+  }
+}
+
+module.exports = { verifyOrderPayment, settleProviderTransaction };

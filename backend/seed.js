@@ -3,8 +3,9 @@
 // platform isn't empty on first run. Safe to re-run — skips what exists.
 require("dotenv").config();
 
-const dns = require("dns");
-dns.setServers(["8.8.8.8", "8.8.4.4"])
+// Some networks cannot resolve mongodb+srv records. Opt in with e.g.
+// DNS_SERVERS=8.8.8.8,8.8.4.4 rather than overriding DNS for everyone.
+if (process.env.DNS_SERVERS) require("dns").setServers(process.env.DNS_SERVERS.split(",").map(s => s.trim()));
 
 const mongoose = require("mongoose");
 const connectDB = require("./config/db");
@@ -23,6 +24,10 @@ const sampleProducts = [
 ];
 
 async function seed() {
+  const adminPassword = process.env.SEED_ADMIN_PASSWORD;
+  if (!adminPassword || adminPassword.length < 12) {
+    throw new Error("Set SEED_ADMIN_PASSWORD (at least 12 characters) before seeding; there is no default admin password.");
+  }
   await connectDB();
 
   const adminEmail = process.env.SEED_ADMIN_EMAIL || "admin@krisgen.com";
@@ -37,7 +42,7 @@ async function seed() {
       name: "Krisgen Admin",
       email: adminEmail,
       phone: "08035142589",
-      passwordHash: process.env.SEED_ADMIN_PASSWORD || "changeMe123!",
+      passwordHash: adminPassword,
       role: "admin",
       referralCode,
     });

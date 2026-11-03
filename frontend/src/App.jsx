@@ -13,6 +13,11 @@ import HowItWorks from "./pages/public/HowItWorks";
 import Contact from "./pages/public/Contact";
 import About from "./pages/public/About";
 import FAQ from "./pages/public/FAQ";
+import ForgotPassword from "./pages/public/ForgotPassword";
+import ResetPassword from "./pages/public/ResetPassword";
+import Terms from "./pages/public/Terms";
+import Privacy from "./pages/public/Privacy";
+import Refunds from "./pages/public/Refunds";
 
 import MemberLayout from "./pages/member/MemberLayout";
 import DashboardHome from "./pages/member/DashboardHome";
@@ -55,6 +60,11 @@ export default function App() {
       <Route path="/contact" element={<PublicLayout><Contact /></PublicLayout>} />
       <Route path="/about" element={<PublicLayout><About /></PublicLayout>} />
       <Route path="/faq" element={<PublicLayout><FAQ /></PublicLayout>} />
+      <Route path="/forgot-password" element={<PublicLayout><ForgotPassword /></PublicLayout>} />
+      <Route path="/reset-password" element={<PublicLayout><ResetPassword /></PublicLayout>} />
+      <Route path="/terms" element={<PublicLayout><Terms /></PublicLayout>} />
+      <Route path="/privacy" element={<PublicLayout><Privacy /></PublicLayout>} />
+      <Route path="/refunds" element={<PublicLayout><Refunds /></PublicLayout>} />
 
       {/* Member dashboard */}
       <Route

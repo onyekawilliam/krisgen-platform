@@ -4,19 +4,30 @@ import api from "../../api/axios";
 export default function AdminSettings() {
   const [form, setForm] = useState({ directCommissionRate: "", referralOverrideRate: "" });
   const [saved, setSaved] = useState(false);
+  const [error, setError] = useState("");
 
   useEffect(() => {
-    api.get("/commissions/admin/settings").then((res) => setForm(res.data.data));
+    api
+      .get("/commissions/admin/settings")
+      .then((res) => setForm(res.data.data))
+      .catch(() => setError("Could not load settings. Refresh to try again."));
   }, []);
 
   async function handleSubmit(e) {
     e.preventDefault();
-    await api.patch("/commissions/admin/settings", {
-      directCommissionRate: Number(form.directCommissionRate),
-      referralOverrideRate: Number(form.referralOverrideRate),
-    });
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
+    setError("");
+    setSaved(false);
+    try {
+      const res = await api.patch("/commissions/admin/settings", {
+        directCommissionRate: Number(form.directCommissionRate),
+        referralOverrideRate: Number(form.referralOverrideRate),
+      });
+      setForm(res.data.data);
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+    } catch (err) {
+      setError(err.response?.data?.message || "Could not save settings.");
+    }
   }
 
   return (
@@ -30,13 +41,15 @@ export default function AdminSettings() {
       <form onSubmit={handleSubmit} className="card max-w-sm flex flex-col gap-3">
         <div>
           <label className="label">Direct sale commission rate (%)</label>
-          <input type="number" className="input" value={form.directCommissionRate} onChange={(e) => setForm({ ...form, directCommissionRate: e.target.value })} />
+          <input type="number" className="input" min="0" max="100" step="any" required value={form.directCommissionRate} onChange={(e) => setForm({ ...form, directCommissionRate: e.target.value })} />
         </div>
         <div>
           <label className="label">Referral override rate (%)</label>
-          <input type="number" className="input" value={form.referralOverrideRate} onChange={(e) => setForm({ ...form, referralOverrideRate: e.target.value })} />
+          <input type="number" className="input" min="0" max="100" step="any" required value={form.referralOverrideRate} onChange={(e) => setForm({ ...form, referralOverrideRate: e.target.value })} />
         </div>
         <button type="submit" className="btn-primary mt-2">Save settings</button>
+        <p className="text-ink-faint text-xs">Together the two rates cannot exceed 100% of the profit.</p>
+        {error && <p className="text-coral text-sm">{error}</p>}
         {saved && <p className="text-teal text-sm">Saved.</p>}
       </form>
     </div>

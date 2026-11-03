@@ -25,5 +25,11 @@ services:
         sync: false
       - key: CLOUDINARY_API_SECRET
         sync: false
+      - key: FLW_SECRET_HASH
+        sync: false
+      - key: RESEND_API_KEY
+        sync: false
+      - key: EMAIL_FROM
+        sync: false
       - key: COOKIE_SAME_SITE
         value: none

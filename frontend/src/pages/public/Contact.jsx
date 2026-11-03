@@ -1,13 +1,21 @@
 import { useState } from "react";
 
-export default function Contact() {
-  const [sent, setSent] = useState(false);
+const WHATSAPP_NUMBER = "2348035142589";
 
+export default function Contact() {
+  const [form, setForm] = useState({ name: "", phone: "", message: "" });
+  const [opened, setOpened] = useState(false);
+
+  // There is no inbox behind this page, so the message is handed to WhatsApp
+  // (prefilled) where the team actually answers, instead of being dropped.
   function handleSubmit(e) {
     e.preventDefault();
-    // In production, POST to a /api/contact endpoint or ticketing integration.
-    setSent(true);
-    e.target.reset();
+    const text = `Hello Krisgen, my name is ${form.name.trim()} (${form.phone.trim()}).
+
+${form.message.trim()}`;
+    window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(text)}`, "_blank", "noopener,noreferrer");
+    setOpened(true);
+    setForm({ name: "", phone: "", message: "" });
   }
 
   return (
@@ -21,18 +29,22 @@ export default function Contact() {
         <div className="font-mono text-xl text-gold-bright mb-4">08035142589</div>
         <div className="flex gap-3">
           <a href="tel:08035142589" className="btn-outline text-sm py-2.5">Call now</a>
-          <a href="https://wa.me/2348035142589" target="_blank" rel="noopener noreferrer" className="btn-outline text-sm py-2.5">
+          <a href={`https://wa.me/${WHATSAPP_NUMBER}`} target="_blank" rel="noopener noreferrer" className="btn-outline text-sm py-2.5">
             WhatsApp us
           </a>
         </div>
       </div>
 
       <form onSubmit={handleSubmit} className="flex flex-col gap-3">
-        <input className="input" placeholder="Your name" required />
-        <input className="input" placeholder="Phone number" required />
-        <textarea className="input min-h-[100px]" placeholder="What can we help with?" required />
-        <button type="submit" className="btn-primary">Send message</button>
-        {sent && <p className="text-teal text-sm">Thanks — we'll get back to you shortly.</p>}
+        <input className="input" placeholder="Your name" required maxLength={100} value={form.name}
+          onChange={(e) => setForm({ ...form, name: e.target.value })} />
+        <input className="input" placeholder="Phone number" required maxLength={40} value={form.phone}
+          onChange={(e) => setForm({ ...form, phone: e.target.value })} />
+        <textarea className="input min-h-[100px]" placeholder="What can we help with?" required maxLength={1000} value={form.message}
+          onChange={(e) => setForm({ ...form, message: e.target.value })} />
+        <button type="submit" className="btn-primary">Send on WhatsApp</button>
+        <p className="text-ink-faint text-xs">This opens WhatsApp with your message ready to send.</p>
+        {opened && <p className="text-teal text-sm">WhatsApp should have opened — press send there to reach us.</p>}
       </form>
     </div>
   );

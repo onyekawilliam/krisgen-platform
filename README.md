@@ -38,7 +38,9 @@ node seed.js
 ```
 
 This creates an admin using `SEED_ADMIN_EMAIL` / `SEED_ADMIN_PASSWORD` from your `.env` and eight sample
-phones. Set both values explicitly before running the seed script. Do not run the seed script against an
+phones. Set both values explicitly before running the seed script; the password must be at least 12 characters
+and there is no default. If your network cannot resolve `mongodb+srv` addresses, set
+`DNS_SERVERS=8.8.8.8,8.8.4.4` for the seed run. Do not run the seed script against an
 existing production database.
 
 ## Frontend setup
@@ -76,6 +78,9 @@ Configure these values in Render's Environment settings (never commit them):
 | `JWT_SECRET` | Yes | Long, random signing secret. |
 | `FLW_SECRET_KEY` | Yes | Flutterwave **live** secret key. |
 | `FLW_VERIFY_URL` | Yes | Flutterwave **live** transaction-verification endpoint. |
+| `FLW_SECRET_HASH` | Strongly recommended | A secret you invent and also enter as the "Secret hash" in the Flutterwave webhook settings (see below). Without it, a customer who pays and closes the page before confirmation is not fulfilled automatically. |
+| `RESEND_API_KEY` | For password-reset emails | API key from [resend.com](https://resend.com). |
+| `EMAIL_FROM` | For password-reset emails | Sender address on a domain you verified in Resend, e.g. `Krisgen <no-reply@yourdomain.com>`. |
 | `COOKIE_SAME_SITE` | Yes for separate Vercel/Render domains | Set to `none`; the API then requires HTTPS secure cookies. Use `lax` only when the frontend and API are hosted on same-site custom subdomains. |
 | `CLOUDINARY_CLOUD_NAME` | Yes for product image uploads | Cloud name from Cloudinary Console. |
 | `CLOUDINARY_API_KEY` | Yes for product image uploads | API key from Cloudinary Console → Settings → API Keys. |
@@ -112,6 +117,31 @@ Browsers increasingly restrict third-party cookies. For the most reliable login 
 API subdomains beneath the same parent domain and set `COOKIE_SAME_SITE=lax`; otherwise use the configured
 cross-site `none` setting over HTTPS.
 
+### Flutterwave webhook (confirms payments even if the buyer closes the page)
+
+1. Invent a long random string and set it in Render as `FLW_SECRET_HASH`.
+2. In the Flutterwave dashboard open **Settings → Webhooks** and set the URL to
+   `https://<your-render-api-origin>/api/webhooks/flutterwave` and the **Secret hash** to the same string.
+3. Make sure charge/transaction events are enabled, then save.
+
+The webhook only tells the API *which* transaction to look at. The amount, currency and reference are always
+re-read from Flutterwave, and the order goes through the same transaction as the buyer's own confirmation, so a
+payment confirmed twice (webhook and browser, or Flutterwave retrying) still deducts stock and creates
+commissions exactly once. Without `FLW_SECRET_HASH` the endpoint answers 503 and the API logs a warning at startup.
+
+### Password-reset emails
+
+Create a [Resend](https://resend.com) account, verify a sending domain, then set `RESEND_API_KEY` and `EMAIL_FROM`
+in Render. The reset link points at `CLIENT_URL/reset-password`, works for one hour and can be used once, and a
+reset signs out every older session. When these are not set, no email is sent (the API logs a warning); in local
+development with `NODE_ENV=development` the link is printed in the API console instead so you can try the flow.
+
+### Legal pages
+
+`/terms`, `/privacy` and `/refunds` are written from how the site actually behaves, but they are drafts and show a
+notice saying so. After they have been reviewed, set `LEGAL_PAGES_ARE_DRAFT` to `false` in
+`frontend/src/components/LegalPage.jsx`.
+
 ## API overview
 
 All endpoints are under `/api`. Auth uses an http-only cookie (`credentials: include` from the frontend).
@@ -119,13 +149,26 @@ All endpoints are under `/api`. Auth uses an http-only cookie (`credentials: inc
 | Area | Public | Member (logged in) | Admin |
 |---|---|---|---|
 | Products | browse, view | — | create/edit/deactivate, sees cost price |
-| Orders | — | create, view own, verify payment | view all, update status, record in-store sales |
+| Orders | — | create (needs a delivery address), view own, verify payment | view all, update status, record in-store sales |
 | Referrals | — | view own referral list + link | view all |
-| Commissions | — | view own | view all, approve/reverse/pay, configure rates |
-| Withdrawals | — | request, view own | approve/reject/pay |
+| Commissions | — | view own | view all, approve/reverse, configure rates |
+| Withdrawals | — | request, view own | approve/reject/mark paid |
 | Members | — | — | list, view detail, suspend/reactivate |
 
 See `backend/routes/` for the full route list.
+
+## Money rules
+
+- **Commissions** are approved or reversed by an admin and only move forward: a cancelled or reversed commission
+  can never be brought back, and nothing is settled by hand. A sale at or below cost earns no commission.
+- **Rates** — the direct rate and the referral override rate (and a product's own rate plus the override) are
+  shares of one profit, so each pair is limited to 100% together.
+- **Withdrawals** draw on approved commissions. A member's requests are processed one at a time inside a
+  transaction, so the same balance can never be requested twice. Marking a withdrawal *paid* is the only way a
+  commission is settled; paid and rejected withdrawals are final. Bank account numbers are 10 digits.
+- **Delivery** — checkout requires a full delivery address (name, phone, street, city, state); admins see it on the
+  order.
+- **Cross-site writes** — the API refuses state-changing requests whose `Origin` is not `CLIENT_URL`.
 
 ## Admin in-store sales
 

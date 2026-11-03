@@ -47,8 +47,8 @@ export default function DashboardHome() {
           <div className="text-ink-faint text-xs mt-1">Pending review</div>
         </div>
         <div className="card">
-          <div className="text-xl font-display font-bold">{naira(summary?.approved)}</div>
-          <div className="text-ink-faint text-xs mt-1">Approved (withdrawable)</div>
+          <div className="text-xl font-display font-bold">{naira(summary?.available)}</div>
+          <div className="text-ink-faint text-xs mt-1">Available to withdraw</div>
         </div>
         <div className="card">
           <div className="text-xl font-display font-bold">{referralCount}</div>

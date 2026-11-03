@@ -9,15 +9,28 @@ const asyncHandler = require("../utils/asyncHandler");
 const { verifyOrderPayment } = require("../services/onlinePaymentService");
 const { minorUnits } = require("../utils/paymentMoney");
 const { reverseCommissionsForOrder } = require("../services/commissionService");
+const { requireString, queryString } = require("../utils/inputGuards");
+
+function validShippingAddress(address) {
+  if (!address || typeof address !== "object" || Array.isArray(address)) {
+    throw new ApiError(400, "A delivery address is required");
+  }
+  return {
+    fullName: requireString(address.fullName, "Recipient name", { max: 100 }),
+    phone: requireString(address.phone, "Recipient phone", { max: 40, min: 7 }),
+    address: requireString(address.address, "Street address", { max: 250 }),
+    city: requireString(address.city, "City", { max: 100 }),
+    state: requireString(address.state, "State", { max: 100 }),
+  };
+}
 
 // Creates a pending order from selling-price snapshots taken server-side —
-// the frontend sends product IDs and quantities only, never prices.
-// `sellerCode` is optional: pass an affiliate's referral code at checkout if
-// this purchase is being recorded as a sale made by that affiliate (e.g. the
-// affiliate is checking out on behalf of a walk-in customer). If omitted,
-// this is a plain customer purchase with soldBy = null (no commission).
+// the frontend sends product IDs, quantities and a delivery address, never
+// prices. The seller who earns the commission is the buyer's own referrer
+// (soldBy = buyer.referredBy); a buyer nobody referred earns nobody a commission.
 exports.createOrder = asyncHandler(async (req, res) => {
-  const { items, shippingAddress } = req.body;
+  const { items } = req.body;
+  const shippingAddress = validShippingAddress(req.body.shippingAddress);
   if (!Array.isArray(items) || items.length === 0 || items.length > 100) {
     throw new ApiError(400, "Order must contain 1 to 100 items");
   }
@@ -134,7 +147,7 @@ exports.cancelMyOrder = asyncHandler(async (req, res) => {
 // ----- Admin -----
 
 exports.adminListOrders = asyncHandler(async (req, res) => {
-  const { status } = req.query;
+  const status = queryString(req.query.status);
   const query = status ? { status } : {};
   const orders = await Order.find(query)
   .populate("buyer", "name email phone")

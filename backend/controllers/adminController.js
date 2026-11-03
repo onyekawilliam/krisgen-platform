@@ -8,16 +8,14 @@ const Referral = require("../models/Referral");
 const ApiError = require("../utils/ApiError");
 const asyncHandler = require("../utils/asyncHandler");
 const { recordInStoreSale } = require("../services/inStoreSaleService");
+const { queryString, escapeRegExp } = require("../utils/inputGuards");
 
 exports.listMembers = asyncHandler(async (req, res) => {
-  const { search } = req.query;
+  const search = queryString(req.query.search);
   const query = { role: "customer" };
   if (search) {
-    query.$or = [
-      { name: new RegExp(search, "i") },
-      { email: new RegExp(search, "i") },
-      { referralCode: new RegExp(search, "i") },
-    ];
+    const pattern = new RegExp(escapeRegExp(search), "i");
+    query.$or = [{ name: pattern }, { email: pattern }, { referralCode: pattern }];
   }
   const members = await User.find(query)
     .populate("referredBy", "name email referralCode")

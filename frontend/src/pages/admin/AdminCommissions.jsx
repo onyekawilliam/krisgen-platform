@@ -36,11 +36,13 @@ function CommissionActions({ commission, updateStatus }) {
       {commission.status === "pending" && (
         <button onClick={() => updateStatus(commission._id, "approved")} className="text-xs border border-navy-line rounded px-2.5 py-1 hover:border-teal">Approve</button>
       )}
-      {commission.status === "approved" && (
-        <button onClick={() => updateStatus(commission._id, "paid")} className="text-xs border border-navy-line rounded px-2.5 py-1 hover:border-gold">Mark paid</button>
-      )}
       {["pending", "approved"].includes(commission.status) && (
-        <button onClick={() => updateStatus(commission._id, "reversed")} className="text-xs border border-navy-line rounded px-2.5 py-1 hover:border-coral hover:text-coral">Reverse</button>
+        <button
+          onClick={() => window.confirm("Reverse this commission? This cannot be undone.") && updateStatus(commission._id, "reversed")}
+          className="text-xs border border-navy-line rounded px-2.5 py-1 hover:border-coral hover:text-coral"
+        >
+          Reverse
+        </button>
       )}
     </div>
   );
@@ -49,14 +51,25 @@ function CommissionActions({ commission, updateStatus }) {
 export default function AdminCommissions() {
   const [commissions, setCommissions] = useState([]);
   const [filter, setFilter] = useState("");
+  const [error, setError] = useState("");
 
   function load() {
-    api.get("/commissions/admin/all", { params: filter ? { status: filter } : {} }).then((res) => setCommissions(res.data.data));
+    api
+      .get("/commissions/admin/all", { params: filter ? { status: filter } : {} })
+      .then((res) => setCommissions(res.data.data))
+      .catch(() => setError("Could not load commissions. Refresh to try again."));
   }
   useEffect(load, [filter]);
 
+  // Payouts are settled by approving the member's withdrawal, so a commission
+  // here is only ever approved or reversed.
   async function updateStatus(id, status) {
-    await api.patch(`/commissions/admin/${id}/status`, { status });
+    setError("");
+    try {
+      await api.patch(`/commissions/admin/${id}/status`, { status });
+    } catch (err) {
+      setError(err.response?.data?.message || "Could not update this commission.");
+    }
     load();
   }
 
@@ -69,6 +82,7 @@ export default function AdminCommissions() {
           {["pending", "approved", "paid", "cancelled", "reversed"].map((s) => <option key={s} value={s}>{s}</option>)}
         </select>
       </div>
+      {error && <p className="text-coral text-sm mb-4">{error}</p>}
 
       <div className="hidden lg:block overflow-x-auto">
         <table className="w-full min-w-[1120px] text-sm">

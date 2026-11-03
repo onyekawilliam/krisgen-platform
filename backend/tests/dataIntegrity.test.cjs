@@ -294,14 +294,15 @@ test("global commission API rejects invalid values without changing existing set
 
 test("global commission API accepts 0, 100 and fractional percentages, preserving omitted fields", async () => {
   const existing = await Settings.create({ directCommissionRate: 15, referralOverrideRate: 5 });
-  for (const value of [0, 100, 12.75]) {
+  // The direct rate and the override (5) share one profit, so together they stop at 100.
+  for (const value of [0, 95, 12.75]) {
     const response = await request("PATCH", settingsPath, { directCommissionRate: value });
     assert.equal(response.status, 200);
     assert.equal(response.body.data.directCommissionRate, value);
     assert.equal(response.body.data.referralOverrideRate, 5);
     assert.equal(String(response.body.data._id), String(existing._id));
   }
-  for (const value of [0, 100, 3.25]) {
+  for (const value of [0, 87.25, 3.25]) {
     const response = await request("PATCH", settingsPath, { referralOverrideRate: value });
     assert.equal(response.status, 200);
     assert.equal(response.body.data.referralOverrideRate, value);
@@ -363,7 +364,7 @@ test("product override API rejects invalid percentages on create and patch", asy
 });
 
 test("product override API accepts inclusive boundaries, decimals, null reset and omitted preservation", async () => {
-  for (const value of [0, 100, 17.25, null]) {
+  for (const value of [0, 95, 17.25, null]) {
     const create = await request("POST", "/api/products/admin", productBody({ commissionRateOverride: value }));
     assert.equal(create.status, 201);
     assert.equal(create.body.data.commissionRateOverride, value);

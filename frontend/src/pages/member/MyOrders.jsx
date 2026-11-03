@@ -36,7 +36,7 @@ export default function MyOrders() {
     customer: {
       email: user?.email || "",
       name: user?.name || "",
-      phone_number: user?.phone_number || "",
+      phone_number: user?.phone || "",
     },
     customizations: {
       title: "Krisgen Communications Ltd",

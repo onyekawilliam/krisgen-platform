@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import api from "../../api/axios";
 
 function naira(n) {
-  return "₦" + Number(n).toLocaleString("en-NG");
+  return "₦" + Number(n || 0).toLocaleString("en-NG");
 }
 
 const statusColor = {
@@ -17,11 +17,16 @@ export default function MyEarnings() {
   const [commissions, setCommissions] = useState([]);
   const [summary, setSummary] = useState(null);
 
+  const [error, setError] = useState("");
+
   useEffect(() => {
-    api.get("/commissions/mine").then((res) => {
-      setCommissions(res.data.data);
-      setSummary(res.data.summary);
-    });
+    api
+      .get("/commissions/mine")
+      .then((res) => {
+        setCommissions(res.data.data);
+        setSummary(res.data.summary);
+      })
+      .catch(() => setError("Could not load your earnings. Refresh to try again."));
   }, []);
 
   return (
@@ -29,12 +34,14 @@ export default function MyEarnings() {
       <h1 className="font-display text-2xl font-bold mb-1">My earnings</h1>
       <p className="text-ink-dim text-sm mb-6">Every commission, with the profit and rate it was calculated from.</p>
 
-      <div className="grid grid-cols-3 gap-4 mb-6">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
         <div className="card"><div className="text-lg font-display font-bold text-gold-bright">{naira(summary?.pending)}</div><div className="text-ink-faint text-xs mt-1">Pending</div></div>
-        <div className="card"><div className="text-lg font-display font-bold text-teal">{naira(summary?.approved)}</div><div className="text-ink-faint text-xs mt-1">Approved</div></div>
+        <div className="card"><div className="text-lg font-display font-bold text-teal">{naira(summary?.approved)}</div><div className="text-ink-faint text-xs mt-1">Approved, not yet paid out</div></div>
         <div className="card"><div className="text-lg font-display font-bold">{naira(summary?.paid)}</div><div className="text-ink-faint text-xs mt-1">Paid out</div></div>
+        <div className="card"><div className="text-lg font-display font-bold text-teal">{naira(summary?.available)}</div><div className="text-ink-faint text-xs mt-1">Available to withdraw</div></div>
       </div>
 
+      {error && <p className="text-coral text-sm mb-4">{error}</p>}
       {commissions.length === 0 ? (
         <p className="text-ink-dim text-sm">No commissions yet.</p>
       ) : (
