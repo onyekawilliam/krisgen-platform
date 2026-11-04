@@ -1,6 +1,7 @@
 import { useState } from "react";
 import api from "../../api/axios";
 import { useAuth } from "../../context/AuthContext";
+import ChangePasswordForm from "../../components/ChangePasswordForm";
 
 export default function Profile() {
   const { user, setUser } = useAuth();
@@ -40,6 +41,9 @@ export default function Profile() {
         <button type="submit" className="btn-primary mt-2">Save changes</button>
         {saved && <p className="text-teal text-sm">Saved.</p>}
       </form>
+
+      <h2 className="font-display font-semibold mt-10 mb-3">Change password</h2>
+      <ChangePasswordForm />
     </div>
   );
 }

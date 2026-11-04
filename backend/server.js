@@ -64,6 +64,9 @@ app.use(
   rateLimit({ windowMs: 15 * 60 * 1000, max: 20, message: { success: false, message: "Too many login attempts, try again later." } })
 );
 
+// Guessing the current password through this form is still guessing.
+app.use("/api/auth/me/password", rateLimit({ windowMs: 15 * 60 * 1000, max: 10, message: { success: false, message: "Too many attempts, try again later." } }));
+
 // Sign-up and password reset can be abused without logging in, so each gets its own cap.
 app.use("/api/auth/register", rateLimit({ windowMs: 60 * 60 * 1000, max: 30, message: { success: false, message: "Too many sign-ups from this network, try again later." } }));
 app.use("/api/auth/forgot-password", rateLimit({ windowMs: 60 * 60 * 1000, max: 10, message: { success: false, message: "Too many reset requests, try again later." } }));

@@ -137,6 +137,33 @@ exports.updateProfile = asyncHandler(async (req, res) => {
   res.json({ success: true, data: publicUser(req.user) });
 });
 
+// Lets a signed-in person choose a new password. The current password is
+// required, so someone who finds an unlocked screen cannot take over the
+// account. Changing it signs out every other session, so a fresh cookie is
+// issued here to keep this device logged in.
+exports.changePassword = asyncHandler(async (req, res) => {
+  const { currentPassword, newPassword } = req.body;
+  if (!isString(currentPassword) || !isString(newPassword) || !currentPassword) {
+    throw new ApiError(400, "Enter your current password and a new password");
+  }
+  if (newPassword.length < 8 || newPassword.length > 72) {
+    throw new ApiError(400, "The new password must be 8 to 72 characters");
+  }
+  if (newPassword === currentPassword) {
+    throw new ApiError(400, "The new password must be different from the current one");
+  }
+
+  const user = await User.findById(req.user._id).select("+passwordHash");
+  if (!(await user.comparePassword(currentPassword))) {
+    throw new ApiError(400, "Your current password is not correct");
+  }
+
+  user.passwordHash = newPassword; // hashed by the pre-save hook, which also records passwordChangedAt
+  await user.save();
+  sendTokenCookie(res, signToken(user._id));
+  res.json({ success: true, message: "Password updated. Other devices have been signed out." });
+});
+
 // The link is only ever sent by email. The one exception is local development
 // with no mail provider set up, where it is printed to this server's own console
 // so the flow can be tried; that branch never runs in production.

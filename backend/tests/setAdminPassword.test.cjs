@@ -4,6 +4,7 @@ const mongoose = require("mongoose");
 const { MongoMemoryReplSet } = require("mongodb-memory-server");
 const User = require("../models/User");
 const { setAdminPassword } = require("../scripts/setAdminPassword");
+const { createAdmin } = require("../scripts/createAdmin");
 
 let replSet;
 
@@ -53,4 +54,29 @@ test("refuses customers, unknown emails and weak or missing passwords", async ()
   assert.equal(await customer.comparePassword("customer-pass-1"), true);
   const admin = await User.findOne({ email: "boss@example.com" }).select("+passwordHash");
   assert.equal(await admin.comparePassword("old-password-1"), true);
+});
+
+test("createAdmin makes a new admin with a hashed password and its own referral code", async () => {
+  const created = await createAdmin({ email: " Owner@Example.com ", name: "Shop Owner", password: "temporary-password-1" });
+  assert.equal(created, "owner@example.com");
+  const owner = await User.findOne({ email: "owner@example.com" }).select("+passwordHash");
+  assert.equal(owner.role, "admin");
+  assert.equal(owner.name, "Shop Owner");
+  assert.equal(owner.status, "active");
+  assert.ok(owner.referralCode);
+  assert.notEqual(owner.passwordHash, "temporary-password-1");
+  assert.equal(await owner.comparePassword("temporary-password-1"), true);
+});
+
+test("createAdmin never touches an existing account and rejects bad input", async () => {
+  await assert.rejects(createAdmin({ email: "boss@example.com", password: "temporary-password-1" }), /already exists/);
+  await assert.rejects(createAdmin({ email: "cust@example.com", password: "temporary-password-1" }), /already exists/);
+  await assert.rejects(createAdmin({ email: "not-an-email", password: "temporary-password-1" }), /valid email/);
+  await assert.rejects(createAdmin({ email: "new@example.com", password: "short" }), /12 to 72/);
+  await assert.rejects(createAdmin({ email: "new@example.com" }), /12 to 72/);
+  assert.equal(await User.countDocuments({ email: "new@example.com" }), 0);
+  const customer = await User.findOne({ email: "cust@example.com" });
+  assert.equal(customer.role, "customer");
+  const boss = await User.findOne({ email: "boss@example.com" }).select("+passwordHash");
+  assert.equal(await boss.comparePassword("old-password-1"), true);
 });

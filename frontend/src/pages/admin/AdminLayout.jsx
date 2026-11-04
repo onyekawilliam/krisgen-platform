@@ -9,6 +9,7 @@ const tabs = [
   { to: "/admin/commissions", label: "Commissions" },
   { to: "/admin/withdrawals", label: "Withdrawals" },
   { to: "/admin/settings", label: "Settings" },
+  { to: "/admin/account", label: "Account" },
 ];
 
 export default function AdminLayout() {
