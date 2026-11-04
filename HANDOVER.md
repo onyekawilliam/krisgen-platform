@@ -17,34 +17,45 @@ An online phone shop with a free referral programme.
 | The server (works behind the scenes) | https://krisgen-api.onrender.com |
 | Admin area | log in on the shop with the admin account, then click **Admin** |
 
-## The services behind it, and who must own them
+## Who looks after what
 
-Each of these must be in **your** name (your email, your card), not the developer's. Tick each one as it is
-transferred.
+The shop is **maintained by its developer** on your behalf: fixing problems, updating the code and keeping the
+hosting running. You (the owner) run the business: products, prices, orders, commissions and withdrawals.
 
-| Service | What it does | Owner account email | Transferred? |
+The rule: **the owner owns the accounts that hold money or the business identity; the developer is invited in as a
+team member.** That way you keep control, and the developer can still do the work without sharing your password.
+
+| Service | What it does | Account owner | Developer access |
 |---|---|---|---|
-| GitHub | keeps the code | | ☐ |
-| Vercel | hosts the shop website | | ☐ |
-| Render | runs the server | | ☐ |
-| MongoDB Atlas | stores all data (customers, orders, money records) | | ☐ |
-| Flutterwave | takes the payments | | ☐ |
-| Cloudinary | stores product photos | | ☐ |
-| Resend (optional) | sends password-reset emails | | ☐ |
-| Domain name (optional) | your own web address | | ☐ |
+| Flutterwave | takes the payments, pays out to your bank | **Owner** | none needed (developer never sees live payouts) |
+| Domain name (optional) | your own web address | **Owner** | invited to manage DNS only |
+| MongoDB Atlas | stores all data (customers, orders, money records) | **Owner** | invited as a project member |
+| Render | runs the server | **Owner** | invited as a team member |
+| Vercel | hosts the shop website | **Owner** | invited as a team member |
+| GitHub | keeps the code | Developer or Owner | the other is a collaborator |
+| Cloudinary | stores product photos | **Owner** | invited as a user |
+| Resend (optional) | sends password-reset emails | **Owner** | invited as a member |
+
+Fill in the owner account emails and tick each row once the owner has the account and the developer has been invited.
 
 Never share any service's password or key in WhatsApp, email or chat. Put keys only into the Render or Vercel
-settings pages.
+settings pages. Each person should use their **own** login for each service.
 
-## Take ownership (do this first)
+## Admin logins
 
-1. **Make your own admin login.** Ask the developer to create an admin account for your email, then change its
-   password. Do not keep using the developer's admin account.
-2. **Move each service above** into your own account. Most have a "transfer ownership" or "invite a member" option;
-   invite yourself as owner first, then remove the developer.
-3. **Change the secrets** after the transfer, so anyone who had them no longer can: the admin password, the
-   `JWT_SECRET` in Render, and (in Atlas) the database user's password. Changing `JWT_SECRET` signs everyone out,
-   which is fine.
+- The **owner** has their own admin login and uses it for the daily work.
+- The **developer** has a separate admin login (or none, if the owner prefers) and uses it only for support, such as
+  checking something with the owner. Everyone signs in with their own email, so any change can be traced to a person.
+- Ask the developer to add or remove an admin whenever someone joins or leaves. Admin accounts can see every
+  customer and every cost price, so keep the list short.
+
+## Set-up after the accounts are in the owner's name (do this first)
+
+1. **Owner creates their own admin login** and chooses a long password only they know.
+2. **Invite the developer** to each service in the table.
+3. **Change the secrets** once everything is moved, so anyone who had them before no longer can: the admin
+   passwords, the `JWT_SECRET` in Render, and (in Atlas) the database user's password. Changing `JWT_SECRET` signs
+   everyone out, which is fine.
 
 ## Before taking real payments
 
@@ -106,6 +117,13 @@ settings pages.
 | Customers paid but the order is not paid | The webhook is not set up, or `FLW_SECRET_HASH` does not match Flutterwave's secret hash |
 | No password-reset emails | Resend is not set up (needs `RESEND_API_KEY`, `EMAIL_FROM` and a verified domain) |
 | Locked out of admin | Ask the developer to run the admin password reset script |
+| Anything else is broken | Message the developer with what you did, what you saw and a screenshot; never send passwords or keys |
+
+## Changes and updates
+
+The developer makes code changes on a separate branch and shows them for approval before they go live, so the shop
+is never changed by accident. Vercel and Render redeploy automatically when the approved change is merged. Ask the
+developer before changing prices in bulk, commission rules or payment settings.
 
 ## The settings the server needs (names only)
 
