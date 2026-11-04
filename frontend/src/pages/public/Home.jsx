@@ -51,12 +51,12 @@ export default function Home() {
             <Link to="/register" className="btn-primary inline-block mt-5">Get your referral link</Link>
           </div>
           <div className="card">
-            <div className="text-ink-dim text-sm mb-1">Example commission</div>
+            <div className="text-ink-dim text-sm mb-1">Example commission <span className="text-ink-faint">(illustrative figures)</span></div>
             <div className="font-mono text-sm text-ink-dim space-y-1">
-              <div>Selling price <span className="text-ink float-right">₦350,000</span></div>
-              <div>Cost price <span className="text-ink float-right">₦300,000</span></div>
-              <div className="pt-2 border-t border-navy-line">Gross profit <span className="text-ink float-right">₦50,000</span></div>
-              <div>Direct-seller commission (15%) <span className="text-gold-bright float-right">₦7,500</span></div>
+              <div>Selling price <span className="text-ink float-right">₦100,000</span></div>
+              <div>Cost price <span className="text-ink float-right">₦80,000</span></div>
+              <div className="pt-2 border-t border-navy-line">Gross profit <span className="text-ink float-right">₦20,000</span></div>
+              <div>Direct-seller commission (15%) <span className="text-gold-bright float-right">₦3,000</span></div>
             </div>
           </div>
         </div>
