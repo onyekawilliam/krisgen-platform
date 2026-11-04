@@ -18,6 +18,7 @@ import ResetPassword from "./pages/public/ResetPassword";
 import Terms from "./pages/public/Terms";
 import Privacy from "./pages/public/Privacy";
 import Refunds from "./pages/public/Refunds";
+import NotFound from "./pages/public/NotFound";
 
 import MemberLayout from "./pages/member/MemberLayout";
 import DashboardHome from "./pages/member/DashboardHome";
@@ -102,6 +103,9 @@ export default function App() {
         <Route path="withdrawals" element={<AdminWithdrawals />} />
         <Route path="settings" element={<AdminSettings />} />
       </Route>
+
+      {/* Any address that does not exist */}
+      <Route path="*" element={<PublicLayout><NotFound /></PublicLayout>} />
     </Routes>
   );
 }
