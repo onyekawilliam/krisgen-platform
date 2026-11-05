@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate, useLocation, Link } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
+import PasswordInput from "../../components/PasswordInput";
 
 export default function Login() {
   const { login } = useAuth();
@@ -37,7 +38,7 @@ export default function Login() {
         </div>
         <div>
           <label className="label">Password</label>
-          <input type="password" className="input" required value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} />
+          <PasswordInput autoComplete="current-password" required value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} />
           <Link to="/forgot-password" className="text-teal text-xs mt-1.5 inline-block">Forgot your password?</Link>
         </div>
 

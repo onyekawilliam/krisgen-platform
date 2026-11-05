@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link, useSearchParams, useNavigate } from "react-router-dom";
 import api from "../../api/axios";
+import PasswordInput from "../../components/PasswordInput";
 
 export default function ResetPassword() {
   const [params] = useSearchParams();
@@ -55,12 +56,12 @@ export default function ResetPassword() {
         <form onSubmit={handleSubmit} className="flex flex-col gap-3">
           <div>
             <label className="label" htmlFor="new-password">New password</label>
-            <input id="new-password" type="password" className="input" required minLength={8} maxLength={72}
+            <PasswordInput id="new-password" required minLength={8} maxLength={72}
               autoComplete="new-password" value={password} onChange={(e) => setPassword(e.target.value)} />
           </div>
           <div>
             <label className="label" htmlFor="confirm-password">Confirm new password</label>
-            <input id="confirm-password" type="password" className="input" required minLength={8} maxLength={72}
+            <PasswordInput id="confirm-password" required minLength={8} maxLength={72}
               autoComplete="new-password" value={confirm} onChange={(e) => setConfirm(e.target.value)} />
           </div>
           {error && (

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import api from "../api/axios";
+import PasswordInput from "./PasswordInput";
 
 export default function ChangePasswordForm() {
   const [form, setForm] = useState({ currentPassword: "", newPassword: "", confirm: "" });
@@ -34,18 +35,18 @@ export default function ChangePasswordForm() {
     <form onSubmit={handleSubmit} className="flex flex-col gap-3 max-w-sm">
       <div>
         <label className="label" htmlFor="current-password">Current password</label>
-        <input id="current-password" type="password" className="input" required autoComplete="current-password"
+        <PasswordInput id="current-password" required autoComplete="current-password"
           value={form.currentPassword} onChange={(e) => setForm({ ...form, currentPassword: e.target.value })} />
       </div>
       <div>
         <label className="label" htmlFor="new-password">New password</label>
-        <input id="new-password" type="password" className="input" required minLength={8} maxLength={72}
+        <PasswordInput id="new-password" required minLength={8} maxLength={72}
           autoComplete="new-password" value={form.newPassword}
           onChange={(e) => setForm({ ...form, newPassword: e.target.value })} />
       </div>
       <div>
         <label className="label" htmlFor="confirm-password">Confirm new password</label>
-        <input id="confirm-password" type="password" className="input" required minLength={8} maxLength={72}
+        <PasswordInput id="confirm-password" required minLength={8} maxLength={72}
           autoComplete="new-password" value={form.confirm}
           onChange={(e) => setForm({ ...form, confirm: e.target.value })} />
       </div>
