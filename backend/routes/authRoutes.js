@@ -11,5 +11,6 @@ router.post("/reset-password", ctrl.resetPassword);
 
 router.get("/me", protect, ctrl.me);
 router.patch("/me", protect, ctrl.updateProfile);
+router.patch("/me/password", protect, ctrl.changePassword);
 
 module.exports = router;

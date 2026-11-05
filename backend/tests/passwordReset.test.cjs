@@ -149,3 +149,43 @@ test("registering a new account does not invalidate anyone's session", async () 
   const stored = await User.findById(user._id);
   assert.equal(stored.passwordChangedAt, null);
 });
+
+// ----- changing your own password while signed in -----
+
+async function loginToken(password) {
+  const login = await fetch(baseUrl + "/api/auth/login", { method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email: "ada@example.com", password }) });
+  return login.status === 200 ? login.headers.get("set-cookie").match(/krisgen_token=([^;]+)/)[1] : null;
+}
+
+test("a signed-in user can change their password and stays signed in on this device", async () => {
+  const older = jwt.sign({ id: String(user._id), iat: Math.floor(Date.now() / 1000) - 30 }, process.env.JWT_SECRET);
+  const response = await fetch(baseUrl + "/api/auth/me/password", { method: "PATCH",
+    headers: { "Content-Type": "application/json", Authorization: "Bearer " + older },
+    body: JSON.stringify({ currentPassword: "old-password-1", newPassword: "brand-new-pass-2" }) });
+  assert.equal(response.status, 200);
+  const fresh = response.headers.get("set-cookie").match(/krisgen_token=([^;]+)/)[1];
+  assert.equal((await call("GET", "/api/auth/me", undefined, fresh)).status, 200, "this device stays signed in");
+  assert.equal((await call("GET", "/api/auth/me", undefined, older)).status, 401, "other devices are signed out");
+  assert.equal(await loginToken("old-password-1"), null);
+  assert.ok(await loginToken("brand-new-pass-2"));
+});
+
+test("changing the password needs the right current password and a sensible new one", async () => {
+  const token = jwt.sign({ id: String(user._id) }, process.env.JWT_SECRET);
+  const change = body => call("PATCH", "/api/auth/me/password", body, token);
+  assert.equal((await change({ currentPassword: "wrong-password", newPassword: "brand-new-pass-2" })).status, 400);
+  for (const body of [
+    { currentPassword: "old-password-1", newPassword: "short" },
+    { currentPassword: "old-password-1", newPassword: "x".repeat(73) },
+    { currentPassword: "old-password-1", newPassword: "old-password-1" },
+    { currentPassword: "old-password-1" },
+    { currentPassword: { $ne: null }, newPassword: "brand-new-pass-2" },
+    { currentPassword: "old-password-1", newPassword: ["brand-new-pass-2"] },
+    {},
+  ]) {
+    assert.equal((await change(body)).status, 400, JSON.stringify(body));
+  }
+  assert.equal((await call("PATCH", "/api/auth/me/password", { currentPassword: "old-password-1", newPassword: "brand-new-pass-2" })).status, 401);
+  assert.ok(await loginToken("old-password-1"), "the password must be unchanged after every refusal");
+});

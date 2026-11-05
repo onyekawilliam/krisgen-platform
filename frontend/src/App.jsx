@@ -36,6 +36,7 @@ import AdminMembers from "./pages/admin/AdminMembers";
 import AdminCommissions from "./pages/admin/AdminCommissions";
 import AdminWithdrawals from "./pages/admin/AdminWithdrawals";
 import AdminSettings from "./pages/admin/AdminSettings";
+import AdminAccount from "./pages/admin/AdminAccount";
 
 function PublicLayout({ children }) {
   return (
@@ -102,6 +103,7 @@ export default function App() {
         <Route path="commissions" element={<AdminCommissions />} />
         <Route path="withdrawals" element={<AdminWithdrawals />} />
         <Route path="settings" element={<AdminSettings />} />
+        <Route path="account" element={<AdminAccount />} />
       </Route>
 
       {/* Any address that does not exist */}
