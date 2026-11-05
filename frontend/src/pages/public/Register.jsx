@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate, useSearchParams, Link } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
+import PasswordInput from "../../components/PasswordInput";
 
 export default function Register() {
   const { register } = useAuth();
@@ -49,7 +50,7 @@ export default function Register() {
         </div>
         <div>
           <label className="label">Password</label>
-          <input type="password" className="input" required minLength={8} value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} />
+          <PasswordInput autoComplete="new-password" required minLength={8} value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} />
         </div>
 
         {error && <p className="text-coral text-sm">{error}</p>}
