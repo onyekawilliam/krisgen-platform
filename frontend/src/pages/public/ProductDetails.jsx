@@ -222,6 +222,22 @@ async function handleBuy() {
         <button onClick={handleBuy} disabled={placing || product.stock === 0} className="btn-primary mt-6 w-full py-3.5 text-base md:w-auto md:px-10">
           {placing ? "Placing order…" : product.stock === 0 ? "Out of stock" : "Buy now"}
         </button>
+
+        <ul className="mt-6 grid gap-2.5 text-sm text-ink-dim">
+          <li className="flex items-center gap-2.5">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 text-mint" aria-hidden="true"><path d="M12 3l8 3v6c0 4.5-3.4 8-8 9-4.6-1-8-4.5-8-9V6l8-3z" /><path d="M8.5 12l2.5 2.5 4.5-5" /></svg>
+            Pay securely by card, bank transfer or USSD
+          </li>
+          <li className="flex items-center gap-2.5">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 text-mint" aria-hidden="true"><path d="M3 7h11v9H3z" /><path d="M14 10h4l3 3v3h-7z" /><circle cx="7" cy="18" r="1.8" /><circle cx="17" cy="18" r="1.8" /></svg>
+            Delivered to the address you enter above
+          </li>
+          <li className="flex items-center gap-2.5">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 text-mint" aria-hidden="true"><path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2z" /></svg>
+            Questions? <a href="tel:08035142589" className="text-gold-bright hover:underline">Call 08035142589</a> or{" "}
+            <a href="https://wa.me/2348035142589" target="_blank" rel="noopener noreferrer" className="text-gold-bright hover:underline">WhatsApp us</a>
+          </li>
+        </ul>
       </div>
     </div>
   );

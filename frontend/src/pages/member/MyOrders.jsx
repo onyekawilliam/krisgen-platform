@@ -2,21 +2,12 @@ import { useEffect, useRef, useState } from "react";
 import { useFlutterwave, closePaymentModal } from "flutterwave-react-v3";
 import api from "../../api/axios";
 import { useAuth } from "../../context/AuthContext";
+import StatusBadge from "../../components/StatusBadge";
 
 
 function naira(n) {
   return "₦" + Number(n).toLocaleString("en-NG");
 }
-
-const statusColor = {
-  pending_payment: "text-ink-faint",
-  payment_review: "text-gold-bright",
-  paid: "text-teal",
-  processing: "text-gold-bright",
-  delivered: "text-teal",
-  cancelled: "text-coral",
-  refunded: "text-coral",
-};
 
 export default function MyOrders() {
   const [orders, setOrders] = useState([]);
@@ -161,9 +152,7 @@ export default function MyOrders() {
             <div key={o._id} className="card">
               <div className="flex justify-between items-center mb-2">
                 <span className="font-mono text-sm text-ink-dim">{o.orderNumber}</span>
-                <span className={`text-xs font-semibold uppercase ${statusColor[o.status] || "text-ink-dim"}`}>
-                  {o.status === "payment_review" ? "Payment received — awaiting admin review" : o.status.replaceAll("_", " ")}
-                </span>
+                <StatusBadge status={o.status} label={o.status === "payment_review" ? "Payment received — awaiting admin review" : undefined} />
               </div>
               {o.items.map((item, i) => (
                 <div key={i} className="text-sm text-ink flex justify-between">

@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import api from "../../api/axios";
 import ProductCard from "../../components/ProductCard";
 
@@ -6,7 +7,9 @@ const BRANDS = ["All", "Tecno", "Infinix", "Itel", "Viva", "Samsung", "Redmi", "
 
 export default function Shop() {
   const [products, setProducts] = useState([]);
-  const [brand, setBrand] = useState("All");
+  const [searchParams] = useSearchParams();
+  const requestedBrand = searchParams.get("brand");
+  const [brand, setBrand] = useState(BRANDS.includes(requestedBrand) ? requestedBrand : "All");
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [loading, setLoading] = useState(true);

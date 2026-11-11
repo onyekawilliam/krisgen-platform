@@ -33,7 +33,7 @@ export default function AdminLayout() {
         </button>
       </div>
       <div className="flex flex-col md:flex-row">
-        <nav aria-label="Admin" className="flex flex-shrink-0 gap-1 overflow-x-auto border-b border-navy-line p-3 md:w-52 md:flex-col md:border-b-0 md:border-r">
+        <nav aria-label="Admin" className="no-scrollbar flex flex-shrink-0 gap-1 overflow-x-auto border-b border-navy-line p-3 md:w-52 md:flex-col md:border-b-0 md:border-r">
           {tabs.map((t) => (
             <NavLink
               key={t.to}

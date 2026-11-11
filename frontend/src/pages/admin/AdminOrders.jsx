@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import api from "../../api/axios";
+import StatusBadge from "../../components/StatusBadge";
 
 function naira(n) {
   return "₦" + Number(n).toLocaleString("en-NG");
@@ -437,7 +438,7 @@ export default function AdminOrders() {
                 ))}
               </td>
               <td className="py-2.5 text-ink-dim">{naira(o.totalAmount)}</td>
-              <td className="py-2.5 text-ink-dim capitalize">{o.status.replace("_", " ")}</td>
+              <td className="py-2.5"><StatusBadge status={o.status} /></td>
               <td className="py-2.5">
                 {o.status === "paid" && (
                   <button onClick={() => updateStatus(o._id, "processing")} className="text-xs border border-navy-line rounded-lg px-3 py-1.5 transition-colors mr-1.5 hover:border-gold">Mark processing</button>

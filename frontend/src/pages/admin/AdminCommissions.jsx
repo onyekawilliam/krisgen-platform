@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import api from "../../api/axios";
+import StatusBadge from "../../components/StatusBadge";
 
 function naira(n) {
   return "₦" + Number(n).toLocaleString("en-NG");
@@ -113,7 +114,7 @@ export default function AdminCommissions() {
                 <td className="py-2.5 pr-3 text-ink-dim whitespace-nowrap">{naira(c.grossProfitSnapshot)}</td>
                 <td className="py-2.5 pr-3 text-ink-dim">{c.commissionRate}%</td>
                 <td className="py-2.5 pr-3 text-ink font-medium whitespace-nowrap">{naira(c.commissionAmount)}</td>
-                <td className="py-2.5 pr-3 text-ink-dim capitalize">{c.status}</td>
+                <td className="py-2.5 pr-3"><StatusBadge status={c.status} /></td>
                 <td className="py-2.5"><CommissionActions commission={c} updateStatus={updateStatus} /></td>
               </tr>
             ))}
@@ -129,7 +130,7 @@ export default function AdminCommissions() {
                 <p className="text-xs text-ink-faint uppercase">Sale</p>
                 <p className="text-ink font-medium break-all">{saleReference(c)}</p>
               </div>
-              <span className="text-xs text-ink-dim capitalize shrink-0">{c.status}</span>
+              <StatusBadge status={c.status} />
             </div>
             <dl className="grid grid-cols-2 gap-x-4 gap-y-3 mt-4 text-sm">
               <div><dt className="text-xs text-ink-faint">Customer</dt><dd className="text-ink">{customerName(c)}</dd><dd className="text-xs text-ink-faint">{customerKind(c)}</dd></div>

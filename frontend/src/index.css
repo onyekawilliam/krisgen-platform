@@ -29,6 +29,13 @@ body {
 
 /* Shared building blocks. In the components layer so a utility such as
    "py-2 px-4" on an element can still make a button smaller. */
+.no-scrollbar {
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
 @layer components {
   .btn-primary {
     @apply inline-flex items-center justify-center gap-2 rounded-xl bg-gold px-6 py-3 font-semibold text-navy-deep transition hover:bg-gold-bright hover:shadow-glow active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50;

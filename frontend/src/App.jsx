@@ -1,4 +1,5 @@
-import { Routes, Route } from "react-router-dom";
+import { useEffect } from "react";
+import { Routes, Route, useLocation } from "react-router-dom";
 import Navbar from "./components/Navbar";
 import Footer from "./components/Footer";
 import { ProtectedRoute, AdminRoute } from "./components/ProtectedRoute";
@@ -38,6 +39,15 @@ import AdminWithdrawals from "./pages/admin/AdminWithdrawals";
 import AdminSettings from "./pages/admin/AdminSettings";
 import AdminAccount from "./pages/admin/AdminAccount";
 
+// A new page should start at the top, not wherever the last one was scrolled to.
+function ScrollToTop() {
+  const { pathname } = useLocation();
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [pathname]);
+  return null;
+}
+
 function PublicLayout({ children }) {
   return (
     <div className="min-h-screen flex flex-col">
@@ -50,6 +60,8 @@ function PublicLayout({ children }) {
 
 export default function App() {
   return (
+    <>
+    <ScrollToTop />
     <Routes>
       {/* Public site */}
       <Route path="/" element={<PublicLayout><Home /></PublicLayout>} />
@@ -109,5 +121,6 @@ export default function App() {
       {/* Any address that does not exist */}
       <Route path="*" element={<PublicLayout><NotFound /></PublicLayout>} />
     </Routes>
+    </>
   );
 }

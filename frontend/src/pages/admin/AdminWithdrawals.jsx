@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import api from "../../api/axios";
+import StatusBadge from "../../components/StatusBadge";
 
 function naira(n) {
   return "₦" + Number(n).toLocaleString("en-NG");
@@ -56,7 +57,7 @@ export default function AdminWithdrawals() {
               <td className="py-2.5 text-ink">{w.user?.name}</td>
               <td className="py-2.5 text-ink-dim">{naira(w.amount)}</td>
               <td className="py-2.5 text-ink-dim">{w.bankDetails?.bankName} — {w.bankDetails?.accountNumber}</td>
-              <td className="py-2.5 text-ink-dim capitalize">{w.status}</td>
+              <td className="py-2.5"><StatusBadge status={w.status} /></td>
               <td className="py-2.5 whitespace-nowrap">
                 {w.status === "pending" && (
                   <>

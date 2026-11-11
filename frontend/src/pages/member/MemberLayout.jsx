@@ -12,7 +12,7 @@ const tabs = [
 export default function MemberLayout() {
   return (
     <div className="mx-auto flex max-w-6xl flex-col gap-8 px-5 py-8 md:flex-row md:gap-10">
-      <nav aria-label="Dashboard" className="flex flex-shrink-0 gap-1 overflow-x-auto border-b border-navy-line pb-3 md:w-52 md:flex-col md:border-b-0 md:border-r md:pb-0 md:pr-5">
+      <nav aria-label="Dashboard" className="no-scrollbar flex flex-shrink-0 gap-1 overflow-x-auto border-b border-navy-line pb-3 md:w-52 md:flex-col md:border-b-0 md:border-r md:pb-0 md:pr-5">
         {tabs.map((t) => (
           <NavLink
             key={t.to}

@@ -22,6 +22,8 @@ const trust = [
   },
 ];
 
+const brands = ["Tecno", "Infinix", "Itel", "Viva", "Samsung", "Redmi", "Realme"];
+
 export default function Home() {
   const [featured, setFeatured] = useState([]);
   const [loaded, setLoaded] = useState(false);
@@ -79,7 +81,26 @@ export default function Home() {
         </ul>
       </section>
 
-      <section className="mx-auto max-w-6xl px-5 pb-6 pt-16">
+      <section className="mx-auto max-w-6xl px-5 pt-14">
+        <h2 className="mb-5 font-display text-2xl font-semibold tracking-tight md:text-3xl">Shop by brand</h2>
+        <ul className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-7">
+          {brands.map((b) => (
+            <li key={b}>
+              <Link
+                to={`/shop?brand=${b}`}
+                className="card card-hover flex flex-col items-center gap-2 px-3 py-5 text-center"
+              >
+                <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-gold/10 font-display text-lg font-bold text-gold">
+                  {b[0]}
+                </span>
+                <span className="text-sm font-medium">{b}</span>
+              </Link>
+            </li>
+          ))}
+        </ul>
+      </section>
+
+      <section className="mx-auto max-w-6xl px-5 pb-6 pt-14">
         <div className="mb-6 flex items-baseline justify-between gap-3">
           <h2 className="font-display text-2xl font-semibold tracking-tight md:text-3xl">Featured phones</h2>
           <Link to="/shop" className="text-sm font-medium text-teal hover:text-ink">See all →</Link>

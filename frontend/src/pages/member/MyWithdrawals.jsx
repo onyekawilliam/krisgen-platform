@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import api from "../../api/axios";
+import StatusBadge from "../../components/StatusBadge";
 
 function naira(n) {
   return "₦" + Number(n).toLocaleString("en-NG");
@@ -86,7 +87,7 @@ export default function MyWithdrawals() {
             {withdrawals.map((w) => (
               <tr key={w._id} className="border-b border-navy-line">
                 <td className="py-2.5 text-ink">{naira(w.amount)}</td>
-                <td className="py-2.5 text-ink-dim capitalize">{w.status}</td>
+                <td className="py-2.5"><StatusBadge status={w.status} /></td>
                 <td className="py-2.5 text-ink-dim">{new Date(w.createdAt).toLocaleDateString()}</td>
               </tr>
             ))}
