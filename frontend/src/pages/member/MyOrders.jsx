@@ -146,7 +146,7 @@ export default function MyOrders() {
 
   return (
     <div>
-      <h1 className="font-display text-2xl font-bold mb-1">My orders</h1>
+      <h1 className="page-title mb-1">My orders</h1>
       <p className="text-ink-dim text-sm mb-6">Every phone you've bought through Krisgen.</p>
       {error && (
         <p className="text-coral text-sm mb-4">

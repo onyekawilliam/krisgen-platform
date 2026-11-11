@@ -32,7 +32,7 @@ export default function AdminWithdrawals() {
   return (
     <div>
       <div className="flex justify-between items-center mb-5">
-        <h1 className="font-display text-xl font-bold">Withdrawals</h1>
+        <h1 className="page-title">Withdrawals</h1>
         <select className="input w-auto" value={filter} onChange={(e) => setFilter(e.target.value)}>
           <option value="">All statuses</option>
           {["pending", "approved", "rejected", "paid"].map((s) => <option key={s} value={s}>{s}</option>)}
@@ -60,15 +60,15 @@ export default function AdminWithdrawals() {
               <td className="py-2.5 whitespace-nowrap">
                 {w.status === "pending" && (
                   <>
-                    <button onClick={() => updateStatus(w._id, "approved")} className="text-xs border border-navy-line rounded px-2.5 py-1 mr-1.5 hover:border-teal">Approve</button>
-                    <button onClick={() => updateStatus(w._id, "rejected", "Reject this withdrawal? The amount returns to the member's balance.")} className="text-xs border border-navy-line rounded px-2.5 py-1 hover:border-coral hover:text-coral">Reject</button>
+                    <button onClick={() => updateStatus(w._id, "approved")} className="text-xs border border-navy-line rounded-lg px-3 py-1.5 transition-colors mr-1.5 hover:border-teal">Approve</button>
+                    <button onClick={() => updateStatus(w._id, "rejected", "Reject this withdrawal? The amount returns to the member's balance.")} className="text-xs border border-navy-line rounded-lg px-3 py-1.5 transition-colors hover:border-coral hover:text-coral">Reject</button>
                   </>
                 )}
                 {w.status === "approved" && (
-                  <button onClick={() => updateStatus(w._id, "paid", "Confirm you have transferred this amount to the member's bank account. A paid withdrawal cannot be undone.")} className="text-xs border border-navy-line rounded px-2.5 py-1 hover:border-gold">Mark paid</button>
+                  <button onClick={() => updateStatus(w._id, "paid", "Confirm you have transferred this amount to the member's bank account. A paid withdrawal cannot be undone.")} className="text-xs border border-navy-line rounded-lg px-3 py-1.5 transition-colors hover:border-gold">Mark paid</button>
                 )}
                 {w.status === "approved" && (
-                  <button onClick={() => updateStatus(w._id, "rejected", "Reject this approved withdrawal? Only do this if no money has been sent.")} className="text-xs border border-navy-line rounded px-2.5 py-1 ml-1.5 hover:border-coral hover:text-coral">Reject</button>
+                  <button onClick={() => updateStatus(w._id, "rejected", "Reject this approved withdrawal? Only do this if no money has been sent.")} className="text-xs border border-navy-line rounded-lg px-3 py-1.5 transition-colors ml-1.5 hover:border-coral hover:text-coral">Reject</button>
                 )}
               </td>
             </tr>

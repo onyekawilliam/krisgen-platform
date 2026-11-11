@@ -134,7 +134,7 @@ export default function AdminOrders() {
   return (
     <div>
       <div className="flex justify-between items-center mb-5">
-        <h1 className="font-display text-xl font-bold">Orders</h1>
+        <h1 className="page-title">Orders</h1>
 
         <div className="flex items-center gap-3">
           <button
@@ -440,13 +440,13 @@ export default function AdminOrders() {
               <td className="py-2.5 text-ink-dim capitalize">{o.status.replace("_", " ")}</td>
               <td className="py-2.5">
                 {o.status === "paid" && (
-                  <button onClick={() => updateStatus(o._id, "processing")} className="text-xs border border-navy-line rounded px-2.5 py-1 mr-1.5 hover:border-gold">Mark processing</button>
+                  <button onClick={() => updateStatus(o._id, "processing")} className="text-xs border border-navy-line rounded-lg px-3 py-1.5 transition-colors mr-1.5 hover:border-gold">Mark processing</button>
                 )}
                 {o.status === "processing" && (
-                  <button onClick={() => updateStatus(o._id, "delivered")} className="text-xs border border-navy-line rounded px-2.5 py-1 mr-1.5 hover:border-teal">Mark delivered</button>
+                  <button onClick={() => updateStatus(o._id, "delivered")} className="text-xs border border-navy-line rounded-lg px-3 py-1.5 transition-colors mr-1.5 hover:border-teal">Mark delivered</button>
                 )}
                 {["paid", "processing"].includes(o.status) && (
-                  <button onClick={() => window.confirm("Cancel this paid order? Its commissions are cancelled too, and any refund must be sent by you in Flutterwave.") && updateStatus(o._id, "cancelled")} className="text-xs border border-navy-line rounded px-2.5 py-1 hover:border-coral hover:text-coral">Cancel</button>
+                  <button onClick={() => window.confirm("Cancel this paid order? Its commissions are cancelled too, and any refund must be sent by you in Flutterwave.") && updateStatus(o._id, "cancelled")} className="text-xs border border-navy-line rounded-lg px-3 py-1.5 transition-colors hover:border-coral hover:text-coral">Cancel</button>
                 )}
               </td>
             </tr>

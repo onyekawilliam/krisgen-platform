@@ -155,25 +155,27 @@ async function handleBuy() {
   if (!product) return <div className="max-w-4xl mx-auto px-5 py-10 text-ink-dim">Loading…</div>;
 
   return (
-    <div className="max-w-4xl mx-auto px-5 py-10 grid md:grid-cols-2 gap-10">
-      <div className="card aspect-square flex items-center justify-center text-ink-faint text-sm">
-        <ProductImage src={product.images?.[0]} alt={product.name} className="h-full w-full object-contain rounded-md" />
+    <div className="mx-auto grid max-w-5xl items-start gap-10 px-5 py-10 md:grid-cols-2 md:gap-14">
+      <div className="card aspect-square overflow-hidden p-0 md:sticky md:top-24">
+        <ProductImage src={product.images?.[0]} alt={product.name} className="h-full w-full object-contain" />
       </div>
       <div>
-        <span className="text-xs uppercase tracking-wide text-teal font-semibold">{product.brand}</span>
-        <h1 className="font-display text-2xl font-bold mt-1">{product.name}</h1>
-        <div className="font-mono text-sm text-ink-dim mt-3 space-y-1">
-          {product.ram && <div>RAM: <span className="text-ink">{product.ram}</span></div>}
-          {product.storage && <div>Storage: <span className="text-ink">{product.storage}</span></div>}
-          {product.specifications?.camera && <div>Camera: <span className="text-ink">{product.specifications.camera}</span></div>}
-        </div>
-        {product.description && <p className="text-ink-dim text-sm mt-4">{product.description}</p>}
+        <Link to="/shop" className="mb-4 inline-block text-sm text-ink-dim transition-colors hover:text-ink">← All phones</Link>
+        <p className="eyebrow">{product.brand}</p>
+        <h1 className="mt-2 font-display text-3xl font-bold tracking-tight md:text-4xl">{product.name}</h1>
+        <dl className="mt-5 grid grid-cols-3 gap-3">
+          {product.ram && <div className="card p-3"><dt className="text-[11px] uppercase tracking-wider text-ink-faint">RAM</dt><dd className="mt-1 font-mono text-sm">{product.ram}</dd></div>}
+          {product.storage && <div className="card p-3"><dt className="text-[11px] uppercase tracking-wider text-ink-faint">Storage</dt><dd className="mt-1 font-mono text-sm">{product.storage}</dd></div>}
+          {product.specifications?.camera && <div className="card p-3"><dt className="text-[11px] uppercase tracking-wider text-ink-faint">Camera</dt><dd className="mt-1 font-mono text-sm">{product.specifications.camera}</dd></div>}
+        </dl>
+        {product.description && <p className="mt-5 text-sm leading-relaxed text-ink-dim">{product.description}</p>}
 
-        <div className="text-2xl font-display font-bold text-gold-bright mt-6">{naira(product.sellingPrice)}</div>
+        <div className="mt-7 font-display text-4xl font-bold tracking-tight text-gold-bright">{naira(product.sellingPrice)}</div>
 
-        <div className="flex items-center gap-3 mt-4">
-          <label className="label mb-0">Qty</label>
+        <div className="mt-5 flex items-center gap-3">
+          <label className="label mb-0" htmlFor="qty">Qty</label>
           <input
+            id="qty"
             type="number"
             min="1"
             max={product.stock}
@@ -181,11 +183,11 @@ async function handleBuy() {
             onChange={(e) => setQty(Math.min(Math.max(1, Math.floor(Number(e.target.value)) || 1), Math.max(1, product.stock)))}
             className="input w-20"
           />
-          <span className="text-ink-faint text-xs">{product.stock} available</span>
+          <span className={`badge ${product.stock > 0 ? "badge-ok" : "badge-muted"}`}>{product.stock > 0 ? `${product.stock} in stock` : "Out of stock"}</span>
         </div>
 
-        <fieldset className="mt-6 border-t border-navy-line pt-5">
-          <legend className="font-display font-semibold text-sm pr-2">Delivery details</legend>
+        <fieldset className="mt-7 rounded-2xl border border-navy-line bg-navy-panel/50 p-5">
+          <legend className="px-2 font-display text-sm font-semibold">Delivery details</legend>
           <div className="grid grid-cols-2 gap-3">
             <div className="col-span-2">
               <label className="label" htmlFor="ship-name">Recipient name</label>
@@ -215,9 +217,9 @@ async function handleBuy() {
           </div>
         </fieldset>
 
-        {error && <p className="text-coral text-sm mt-3">{error}</p>}
+        {error && <p role="alert" className="mt-4 text-sm text-coral">{error}</p>}
 
-        <button onClick={handleBuy} disabled={placing || product.stock === 0} className="btn-primary mt-5 disabled:opacity-50">
+        <button onClick={handleBuy} disabled={placing || product.stock === 0} className="btn-primary mt-6 w-full py-3.5 text-base md:w-auto md:px-10">
           {placing ? "Placing order…" : product.stock === 0 ? "Out of stock" : "Buy now"}
         </button>
       </div>

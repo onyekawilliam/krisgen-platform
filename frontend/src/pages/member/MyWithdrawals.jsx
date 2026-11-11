@@ -44,7 +44,7 @@ export default function MyWithdrawals() {
 
   return (
     <div>
-      <h1 className="font-display text-2xl font-bold mb-1">Withdrawals</h1>
+      <h1 className="page-title mb-1">Withdrawals</h1>
       <p className="text-ink-dim text-sm mb-6">Available balance: <span className="text-gold-bright font-semibold">{naira(available)}</span></p>
 
       <form onSubmit={handleSubmit} className="card flex flex-col gap-3 max-w-sm mb-8">

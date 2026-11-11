@@ -32,7 +32,7 @@ export default function AdminSettings() {
 
   return (
     <div>
-      <h1 className="font-display text-xl font-bold mb-1">Platform settings</h1>
+      <h1 className="page-title mb-1">Platform settings</h1>
       <p className="text-ink-dim text-sm mb-6">
         These rates apply to a product's profit, not its selling price. Changes only affect future sales —
         commissions already recorded keep their original snapshot.

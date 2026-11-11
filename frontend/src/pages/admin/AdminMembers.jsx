@@ -18,7 +18,7 @@ export default function AdminMembers() {
 
   return (
     <div>
-      <h1 className="font-display text-xl font-bold mb-5">Members</h1>
+      <h1 className="page-title mb-5">Members</h1>
       <input className="input max-w-sm mb-5" placeholder="Search by name, email or referral code…" value={search} onChange={(e) => setSearch(e.target.value)} />
 
       <table className="w-full text-sm">
@@ -43,7 +43,7 @@ export default function AdminMembers() {
               <td className="py-2.5 text-ink-dim">₦{Number(m.balance || 0).toLocaleString("en-NG")}</td>
               <td className="py-2.5 capitalize" style={{ color: m.status === "active" ? "#3E9199" : "#D97757" }}>{m.status}</td>
               <td className="py-2.5">
-                <button onClick={() => toggleStatus(m)} className="text-xs border border-navy-line rounded px-2.5 py-1 hover:border-gold">
+                <button onClick={() => toggleStatus(m)} className="text-xs border border-navy-line rounded-lg px-3 py-1.5 transition-colors hover:border-gold">
                   {m.status === "active" ? "Suspend" : "Reactivate"}
                 </button>
               </td>

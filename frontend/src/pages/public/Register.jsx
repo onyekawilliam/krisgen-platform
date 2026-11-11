@@ -28,7 +28,7 @@ export default function Register() {
   }
 
   return (
-    <div className="max-w-sm mx-auto px-5 py-14">
+    <div className="mx-4 my-12 rounded-2xl border border-navy-line bg-navy-panel p-7 sm:mx-auto sm:max-w-md md:my-20 md:p-8">
       <h1 className="font-display text-2xl font-bold mb-1">Create a free account</h1>
       <p className="text-ink-dim text-sm mb-6">
         No fee to register. You'll get a referral link automatically.

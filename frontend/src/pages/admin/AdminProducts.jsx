@@ -147,7 +147,7 @@ export default function AdminProducts() {
   return (
     <div>
       <div className="flex justify-between items-center mb-5">
-        <h1 className="font-display text-xl font-bold">Products</h1>
+        <h1 className="page-title">Products</h1>
         <button onClick={startNew} className="btn-primary text-sm py-2 px-4">+ Add new phone</button>
       </div>
 
@@ -223,8 +223,8 @@ export default function AdminProducts() {
               <td className="py-2.5 text-ink-dim">{p.commissionRateOverride !== null ? p.commissionRateOverride + "%" : "Default"}</td>
               <td className="py-2.5 text-ink-dim">{p.stock}</td>
               <td className="py-2.5">
-                <button onClick={() => startEdit(p)} className="text-xs border border-navy-line rounded px-2.5 py-1 mr-1.5 hover:border-gold">Edit</button>
-                <button onClick={() => handleDeactivate(p._id)} className="text-xs border border-navy-line rounded px-2.5 py-1 hover:border-coral hover:text-coral">Deactivate</button>
+                <button onClick={() => startEdit(p)} className="text-xs border border-navy-line rounded-lg px-3 py-1.5 transition-colors mr-1.5 hover:border-gold">Edit</button>
+                <button onClick={() => handleDeactivate(p._id)} className="text-xs border border-navy-line rounded-lg px-3 py-1.5 transition-colors hover:border-coral hover:text-coral">Deactivate</button>
               </td>
             </tr>
           ))}

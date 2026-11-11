@@ -31,7 +31,7 @@ export default function MyEarnings() {
 
   return (
     <div>
-      <h1 className="font-display text-2xl font-bold mb-1">My earnings</h1>
+      <h1 className="page-title mb-1">My earnings</h1>
       <p className="text-ink-dim text-sm mb-6">Every commission, with the profit and rate it was calculated from.</p>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">

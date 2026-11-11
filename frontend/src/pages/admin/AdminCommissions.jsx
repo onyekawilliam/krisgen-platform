@@ -34,12 +34,12 @@ function CommissionActions({ commission, updateStatus }) {
   return (
     <div className="flex flex-wrap gap-1.5">
       {commission.status === "pending" && (
-        <button onClick={() => updateStatus(commission._id, "approved")} className="text-xs border border-navy-line rounded px-2.5 py-1 hover:border-teal">Approve</button>
+        <button onClick={() => updateStatus(commission._id, "approved")} className="text-xs border border-navy-line rounded-lg px-3 py-1.5 transition-colors hover:border-teal">Approve</button>
       )}
       {["pending", "approved"].includes(commission.status) && (
         <button
           onClick={() => window.confirm("Reverse this commission? This cannot be undone.") && updateStatus(commission._id, "reversed")}
-          className="text-xs border border-navy-line rounded px-2.5 py-1 hover:border-coral hover:text-coral"
+          className="text-xs border border-navy-line rounded-lg px-3 py-1.5 transition-colors hover:border-coral hover:text-coral"
         >
           Reverse
         </button>
@@ -76,7 +76,7 @@ export default function AdminCommissions() {
   return (
     <div>
       <div className="flex justify-between items-center mb-5">
-        <h1 className="font-display text-xl font-bold">Commissions</h1>
+        <h1 className="page-title">Commissions</h1>
         <select className="input w-auto" value={filter} onChange={(e) => setFilter(e.target.value)}>
           <option value="">All statuses</option>
           {["pending", "approved", "paid", "cancelled", "reversed"].map((s) => <option key={s} value={s}>{s}</option>)}

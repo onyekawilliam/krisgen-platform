@@ -23,25 +23,25 @@ export default function AdminLayout() {
 
   return (
     <div className="min-h-screen">
-      <div className="flex justify-between items-center px-6 py-4 border-b border-navy-line">
+      <div className="flex items-center justify-between border-b border-navy-line bg-navy-panel/40 px-6 py-3.5">
         <div className="flex items-center gap-2 font-display font-semibold">
-          <span className="w-8 h-8 rounded-md bg-gradient-to-br from-gold to-coral text-navy-deep flex items-center justify-center text-xs font-bold">KC</span>
+          <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-gold text-[13px] font-bold text-navy-deep">KC</span>
           Admin
         </div>
-        <button onClick={handleLogout} className="text-sm border border-navy-line rounded-md px-4 py-1.5 text-ink-dim hover:border-coral hover:text-coral">
+        <button onClick={handleLogout} className="rounded-xl border border-navy-line px-4 py-2 text-sm text-ink-dim transition-colors hover:border-coral hover:text-coral">
           Log out
         </button>
       </div>
       <div className="flex flex-col md:flex-row">
-        <nav className="flex md:flex-col gap-1 overflow-x-auto md:w-48 flex-shrink-0 border-b md:border-b-0 md:border-r border-navy-line p-3">
+        <nav aria-label="Admin" className="flex flex-shrink-0 gap-1 overflow-x-auto border-b border-navy-line p-3 md:w-52 md:flex-col md:border-b-0 md:border-r">
           {tabs.map((t) => (
             <NavLink
               key={t.to}
               to={t.to}
               end={t.end}
               className={({ isActive }) =>
-                `whitespace-nowrap text-sm px-3 py-2 rounded-md ${
-                  isActive ? "bg-navy-panel text-gold-bright font-medium" : "text-ink-dim hover:text-ink"
+                `whitespace-nowrap rounded-xl px-3.5 py-2.5 text-sm transition-colors ${
+                  isActive ? "bg-navy-panel font-medium text-gold-bright" : "text-ink-dim hover:bg-navy-panel/60 hover:text-ink"
                 }`
               }
             >

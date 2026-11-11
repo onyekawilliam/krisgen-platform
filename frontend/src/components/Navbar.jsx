@@ -1,6 +1,14 @@
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+
+const desktopLink = ({ isActive }) =>
+  `relative py-1 text-sm transition-colors ${
+    isActive ? "text-ink after:absolute after:inset-x-0 after:-bottom-1 after:h-0.5 after:rounded-full after:bg-gold" : "text-ink-dim hover:text-ink"
+  }`;
+
+const mobileLink = ({ isActive }) =>
+  `rounded-lg px-3 py-3 text-sm ${isActive ? "bg-navy-panel text-gold-bright" : "text-ink-dim hover:bg-navy-panel hover:text-ink"}`;
 
 export default function Navbar() {
   const { user, logout } = useAuth();
@@ -15,94 +23,98 @@ export default function Navbar() {
   ];
 
   async function handleLogout() {
+    setOpen(false);
     await logout();
     navigate("/");
   }
 
+  const accountPath = user?.role === "admin" ? "/admin" : "/dashboard";
+  const accountLabel = user?.role === "admin" ? "Admin" : "Dashboard";
+
   return (
-    <header className="sticky top-0 z-50 bg-navy-deep/90 backdrop-blur border-b border-navy-line">
-      <div className="max-w-6xl mx-auto flex items-center justify-between px-5 py-3.5">
-        <Link to="/" className="flex items-center gap-2 font-semibold font-display">
-          <span className="w-8 h-8 rounded-md bg-gradient-to-br from-gold to-coral text-navy-deep flex items-center justify-center text-xs font-display font-bold">
+    <header className="sticky top-0 z-50 border-b border-navy-line bg-navy-deep/85 backdrop-blur-md">
+      <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-5 py-3">
+        <Link to="/" className="flex items-center gap-2.5 font-display font-semibold" onClick={() => setOpen(false)}>
+          <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-gold font-display text-[13px] font-bold text-navy-deep">
             KC
           </span>
-          Krisgen Communications
+          <span className="hidden sm:inline">Krisgen Communications</span>
+          <span className="sm:hidden">Krisgen</span>
         </Link>
 
-        <nav className="hidden md:flex items-center gap-7">
+        <nav aria-label="Main" className="hidden items-center gap-8 md:flex">
           {links.map((l) => (
-            <Link key={l.to} to={l.to} className="text-sm text-ink-dim hover:text-ink">
+            <NavLink key={l.to} to={l.to} className={desktopLink}>
               {l.label}
-            </Link>
+            </NavLink>
           ))}
         </nav>
 
-        <div className="hidden md:flex items-center gap-3">
+        <div className="hidden items-center gap-3 md:flex">
           {user ? (
             <>
-              <Link
-                to={user.role === "admin" ? "/admin" : "/dashboard"}
-                className="text-sm text-ink-dim hover:text-ink"
-              >
-                {user.role === "admin" ? "Admin" : "Dashboard"}
+              <Link to={accountPath} className="px-2 text-sm text-ink-dim transition-colors hover:text-ink">
+                {accountLabel}
               </Link>
-              <button onClick={handleLogout} className="btn-outline text-sm py-2 px-4">
+              <button onClick={handleLogout} className="btn-outline px-4 py-2 text-sm">
                 Log out
               </button>
             </>
           ) : (
             <>
-              <Link to="/login" className="text-sm text-ink-dim hover:text-ink">
+              <Link to="/login" className="px-2 text-sm text-ink-dim transition-colors hover:text-ink">
                 Log in
               </Link>
-              <Link to="/register" className="btn-primary text-sm py-2 px-4">
+              <Link to="/register" className="btn-primary px-5 py-2 text-sm">
                 Join free
               </Link>
             </>
           )}
         </div>
 
-        <button className="md:hidden text-ink" onClick={() => setOpen(!open)} aria-label="Menu">
-          ☰
+        <button
+          type="button"
+          className="flex h-11 w-11 items-center justify-center rounded-lg text-ink transition-colors hover:bg-navy-panel md:hidden"
+          onClick={() => setOpen(!open)}
+          aria-label={open ? "Close menu" : "Open menu"}
+          aria-expanded={open}
+          aria-controls="mobile-menu"
+        >
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true">
+            {open ? <path d="M6 6l12 12M18 6L6 18" /> : <path d="M4 7h16M4 12h16M4 17h16" />}
+          </svg>
         </button>
       </div>
 
       {open && (
-        <div className="md:hidden flex flex-col border-t border-navy-line px-5 pb-4">
+        <nav id="mobile-menu" aria-label="Mobile" className="flex flex-col gap-1 border-t border-navy-line px-4 pb-4 pt-2 md:hidden">
           {links.map((l) => (
-            <Link
-              key={l.to}
-              to={l.to}
-              onClick={() => setOpen(false)}
-              className="py-2.5 text-sm text-ink-dim border-b border-navy-line"
-            >
+            <NavLink key={l.to} to={l.to} onClick={() => setOpen(false)} className={mobileLink}>
               {l.label}
-            </Link>
+            </NavLink>
           ))}
-          {user ? (
-            <>
-              <Link
-                to={user.role === "admin" ? "/admin" : "/dashboard"}
-                onClick={() => setOpen(false)}
-                className="py-2.5 text-sm text-ink-dim border-b border-navy-line"
-              >
-                {user.role === "admin" ? "Admin" : "Dashboard"}
-              </Link>
-              <button onClick={handleLogout} className="py-2.5 text-sm text-left text-coral">
-                Log out
-              </button>
-            </>
-          ) : (
-            <>
-              <Link to="/login" onClick={() => setOpen(false)} className="py-2.5 text-sm text-ink-dim border-b border-navy-line">
-                Log in
-              </Link>
-              <Link to="/register" onClick={() => setOpen(false)} className="py-2.5 text-sm text-gold-bright">
-                Join free
-              </Link>
-            </>
-          )}
-        </div>
+          <div className="mt-2 flex flex-col gap-2 border-t border-navy-line pt-3">
+            {user ? (
+              <>
+                <Link to={accountPath} onClick={() => setOpen(false)} className="btn-outline py-2.5 text-sm">
+                  {accountLabel}
+                </Link>
+                <button onClick={handleLogout} className="rounded-xl py-2.5 text-sm text-coral">
+                  Log out
+                </button>
+              </>
+            ) : (
+              <>
+                <Link to="/login" onClick={() => setOpen(false)} className="btn-outline py-2.5 text-sm">
+                  Log in
+                </Link>
+                <Link to="/register" onClick={() => setOpen(false)} className="btn-primary py-2.5 text-sm">
+                  Join free
+                </Link>
+              </>
+            )}
+          </div>
+        </nav>
       )}
     </header>
   );

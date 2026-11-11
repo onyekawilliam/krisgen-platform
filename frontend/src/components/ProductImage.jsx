@@ -8,14 +8,16 @@ export default function ProductImage({ src, alt, className = "" }) {
 
   if (!src || failed) {
     return (
-      <div role="img" aria-label={`${alt} (photo coming soon)`}
-        className={`flex flex-col items-center justify-center gap-3 bg-navy-deep text-ink-faint ${className}`}>
-        <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2"
-          strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-          <rect x="7" y="2" width="10" height="20" rx="2.2" />
-          <path d="M11 18.5h2" />
-        </svg>
-        <span className="text-xs text-ink-dim text-center px-3 line-clamp-2">{alt}</span>
+      <div
+        role="img"
+        aria-label={`${alt} (photo coming soon)`}
+        className={`flex flex-col items-center justify-center gap-4 bg-gradient-to-b from-navy-panel2 to-navy-deep text-ink-faint ${className}`}
+      >
+        <div className="relative h-24 w-12 rounded-[14px] border-2 border-navy-line bg-navy-deep" aria-hidden="true">
+          <div className="absolute inset-1 rounded-[9px] bg-gradient-to-br from-gold/25 via-navy-panel2 to-teal/20" />
+          <div className="absolute left-1/2 top-1.5 h-1 w-3 -translate-x-1/2 rounded-full bg-navy-deep" />
+        </div>
+        <span className="line-clamp-2 px-4 text-center text-xs text-ink-dim">{alt}</span>
       </div>
     );
   }

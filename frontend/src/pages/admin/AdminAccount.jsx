@@ -5,7 +5,7 @@ export default function AdminAccount() {
   const { user } = useAuth();
   return (
     <div>
-      <h1 className="font-display text-xl font-bold mb-1">Your account</h1>
+      <h1 className="page-title mb-1">Your account</h1>
       <p className="text-ink-dim text-sm mb-6">
         Signed in as <span className="text-ink">{user?.email}</span>. Choose a long password only you know.
       </p>

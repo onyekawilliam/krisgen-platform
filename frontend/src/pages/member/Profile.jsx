@@ -18,7 +18,7 @@ export default function Profile() {
 
   return (
     <div className="max-w-sm">
-      <h1 className="font-display text-2xl font-bold mb-1">Profile</h1>
+      <h1 className="page-title mb-1">Profile</h1>
       <p className="text-ink-dim text-sm mb-6">Update your account details.</p>
 
       <form onSubmit={handleSubmit} className="flex flex-col gap-3">

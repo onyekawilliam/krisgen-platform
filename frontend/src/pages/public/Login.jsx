@@ -27,7 +27,7 @@ export default function Login() {
   }
 
   return (
-    <div className="max-w-sm mx-auto px-5 py-16">
+    <div className="mx-4 my-12 rounded-2xl border border-navy-line bg-navy-panel p-7 sm:mx-auto sm:max-w-md md:my-20 md:p-8">
       <h1 className="font-display text-2xl font-bold mb-1">Log in</h1>
       <p className="text-ink-dim text-sm mb-6">Access your dashboard, referrals and orders.</p>
 

@@ -2,20 +2,66 @@
 @tailwind components;
 @tailwind utilities;
 
-html { scroll-behavior: smooth; }
+html {
+  scroll-behavior: smooth;
+}
 
-.btn-primary {
-  @apply bg-gold text-navy-deep font-semibold px-5 py-2.5 rounded-md hover:bg-gold-bright transition-colors;
+body {
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }
-.btn-outline {
-  @apply border border-navy-line text-ink px-5 py-2.5 rounded-md hover:border-teal transition-colors;
+
+/* One clear keyboard focus ring everywhere. */
+:focus-visible {
+  outline: 2px solid theme("colors.gold.DEFAULT");
+  outline-offset: 2px;
 }
-.card {
-  @apply bg-navy-panel border border-navy-line rounded-lg p-5;
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  * {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
 }
-.input {
-  @apply w-full bg-navy-deep border border-navy-line rounded-md px-3 py-2.5 text-ink text-sm focus:outline-none focus:border-gold;
-}
-.label {
-  @apply text-xs text-ink-faint mb-1 block;
+
+/* Shared building blocks. In the components layer so a utility such as
+   "py-2 px-4" on an element can still make a button smaller. */
+@layer components {
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl bg-gold px-6 py-3 font-semibold text-navy-deep transition hover:bg-gold-bright hover:shadow-glow active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50;
+  }
+  .btn-outline,
+  .btn-secondary {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl border border-navy-line bg-transparent px-6 py-3 font-medium text-ink transition hover:border-gold hover:text-gold-bright active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50;
+  }
+  .card {
+    @apply rounded-2xl border border-navy-line bg-navy-panel p-5;
+  }
+  .card-hover {
+    @apply transition duration-200 hover:-translate-y-0.5 hover:border-navy-panel2 hover:shadow-lift;
+  }
+  .input {
+    @apply w-full rounded-xl border border-navy-line bg-navy-deep px-3.5 py-3 text-sm text-ink placeholder:text-ink-faint transition focus:border-gold focus:outline-none focus:ring-2 focus:ring-gold/25;
+  }
+  .label {
+    @apply mb-1.5 block text-xs font-medium text-ink-dim;
+  }
+  .eyebrow {
+    @apply text-xs font-semibold uppercase tracking-[0.14em] text-gold;
+  }
+  .badge {
+    @apply inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-semibold;
+  }
+  .badge-ok {
+    @apply bg-mint/10 text-mint;
+  }
+  .badge-muted {
+    @apply bg-navy-panel2 text-ink-dim;
+  }
+  .page-title {
+    @apply font-display text-2xl font-bold tracking-tight md:text-3xl;
+  }
 }

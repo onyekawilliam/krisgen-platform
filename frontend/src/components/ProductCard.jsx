@@ -6,39 +6,29 @@ function naira(n) {
 }
 
 export default function ProductCard({ product }) {
+  const inStock = product.stock > 0;
+  const specs = [product.ram && `${product.ram} RAM`, product.storage, product.specifications?.camera].filter(Boolean);
+
   return (
-    <div className="card flex flex-col gap-2.5">
-      <div className="aspect-square rounded-md overflow-hidden">
+    <div className="card card-hover flex flex-col gap-3 p-4">
+      <Link to={`/shop/${product._id}`} tabIndex={-1} aria-hidden="true" className="block aspect-square overflow-hidden rounded-xl bg-navy-deep">
         <ProductImage src={product.images?.[0]} alt={product.name} className="h-full w-full object-contain" />
+      </Link>
+
+      <div className="flex items-center justify-between">
+        <span className="text-[11px] font-semibold uppercase tracking-[0.12em] text-gold">{product.brand}</span>
+        <span className={`badge ${inStock ? "badge-ok" : "badge-muted"}`}>{inStock ? "In stock" : "Out of stock"}</span>
       </div>
-      <div className="flex justify-between items-center">
-        <span className="text-[11px] uppercase tracking-wide text-teal font-semibold">{product.brand}</span>
-        <span className="text-[11px] text-ink-faint">{product.stock > 0 ? "In stock" : "Out of stock"}</span>
-      </div>
-      <h3 className="font-display font-semibold text-base">{product.name}</h3>
-      <ul className="flex flex-col gap-1 font-mono text-[11px] text-ink-dim">
-        {product.ram && (
-          <li className="flex justify-between">
-            <span>RAM</span>
-            <span className="text-ink">{product.ram}</span>
-          </li>
-        )}
-        {product.storage && (
-          <li className="flex justify-between">
-            <span>Storage</span>
-            <span className="text-ink">{product.storage}</span>
-          </li>
-        )}
-        {product.specifications?.camera && (
-          <li className="flex justify-between">
-            <span>Camera</span>
-            <span className="text-ink">{product.specifications.camera}</span>
-          </li>
-        )}
-      </ul>
-      <div className="flex justify-between items-center pt-2.5 mt-1 border-t border-navy-line">
-        <span className="text-lg font-display font-bold text-gold-bright">{naira(product.sellingPrice)}</span>
-        <Link to={`/shop/${product._id}`} className="text-sm border border-navy-line rounded-md px-3.5 py-1.5 hover:border-teal hover:text-teal">
+
+      <h3 className="font-display text-base font-semibold leading-snug">
+        <Link to={`/shop/${product._id}`} className="hover:text-gold-bright">{product.name}</Link>
+      </h3>
+
+      {specs.length > 0 && <p className="text-xs leading-relaxed text-ink-dim">{specs.join(" · ")}</p>}
+
+      <div className="mt-auto flex items-center justify-between border-t border-navy-line pt-3">
+        <span className="font-display text-lg font-bold text-gold-bright">{naira(product.sellingPrice)}</span>
+        <Link to={`/shop/${product._id}`} className="btn-outline px-4 py-2 text-sm">
           View
         </Link>
       </div>
