@@ -30,13 +30,13 @@ export default function Affiliate() {
       </div>
 
       <div className="card mb-8 p-7">
-        <h3 className="mb-4 font-display font-semibold">Example</h3>
+        <h3 className="mb-4 font-display font-semibold">Example <span className="text-sm font-normal text-ink-faint">(illustrative figures)</span></h3>
         <div className="space-y-3 font-mono text-sm text-ink-dim">
-          <div className="flex justify-between"><span>Selling price</span><span className="text-ink">₦350,000</span></div>
-          <div className="flex justify-between"><span>Cost price</span><span className="text-ink">₦300,000</span></div>
-          <div className="flex justify-between border-t border-navy-line pt-3"><span>Gross profit</span><span className="text-ink">₦50,000</span></div>
-          <div className="flex justify-between"><span>Seller earns (15%)</span><span className="font-semibold text-gold-bright">₦7,500</span></div>
-          <div className="flex justify-between"><span>Seller's referrer earns (5%)</span><span className="font-semibold text-gold-bright">₦2,500</span></div>
+          <div className="flex justify-between"><span>Selling price</span><span className="text-ink">₦100,000</span></div>
+          <div className="flex justify-between"><span>Cost price</span><span className="text-ink">₦80,000</span></div>
+          <div className="flex justify-between border-t border-navy-line pt-3"><span>Gross profit</span><span className="text-ink">₦20,000</span></div>
+          <div className="flex justify-between"><span>Seller earns (15%)</span><span className="font-semibold text-gold-bright">₦3,000</span></div>
+          <div className="flex justify-between"><span>Seller's referrer earns (5%)</span><span className="font-semibold text-gold-bright">₦1,000</span></div>
         </div>
       </div>
 
