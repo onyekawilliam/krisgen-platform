@@ -5,6 +5,7 @@ const asyncHandler = require("../utils/asyncHandler");
 const Withdrawal = require("../models/Withdrawal");
 const { validRate } = require("../utils/numericIntegrity");
 const { queryString } = require("../utils/inputGuards");
+const { canonicalState, normalizeText } = require("../utils/nigeria");
 const { computeAvailableBalance } = require("./withdrawalController");
 
 // Member's own earnings — costPriceSnapshot stays excluded (schema default),
@@ -104,7 +105,7 @@ exports.adminGetSettings = asyncHandler(async (req, res) => {
 });
 
 const rateKeys = ["directCommissionRate", "referralOverrideRate"];
-const pickupKeys = ["pickupEnabled", "pickupAddress", "pickupInstructions"];
+const pickupKeys = ["pickupEnabled", "pickupAddress", "pickupInstructions", "pickupOnlyAreas"];
 
 exports.adminUpdateSettings = asyncHandler(async (req, res) => {
   if (!req.body || typeof req.body !== "object" || Array.isArray(req.body) ||
@@ -124,6 +125,21 @@ exports.adminUpdateSettings = asyncHandler(async (req, res) => {
       throw new ApiError(400, key + " must be text of at most 300 characters");
     }
   }
+  let pickupOnlyAreas;
+  if (Object.hasOwn(req.body, "pickupOnlyAreas")) {
+    const list = req.body.pickupOnlyAreas;
+    if (!Array.isArray(list) || list.length > 50) throw new ApiError(400, "Give up to 50 pickup-only towns");
+    pickupOnlyAreas = [];
+    for (const entry of list) {
+      const state = entry && typeof entry === "object" ? canonicalState(entry.state) : null;
+      const town = entry && typeof entry.town === "string" ? entry.town.trim() : "";
+      if (!state) throw new ApiError(400, "Each pickup-only town needs a state chosen from the list");
+      if (town.length < 2 || town.length > 80) throw new ApiError(400, "Each pickup-only town needs a name of 2 to 80 characters");
+      if (!pickupOnlyAreas.some((a) => a.state === state && normalizeText(a.town) === normalizeText(town))) {
+        pickupOnlyAreas.push({ state, town });
+      }
+    }
+  }
   const { directCommissionRate, referralOverrideRate } = req.body;
   const settings = await Settings.getSettings();
 
@@ -136,8 +152,10 @@ exports.adminUpdateSettings = asyncHandler(async (req, res) => {
   if (directCommissionRate != null) settings.directCommissionRate = directCommissionRate;
   if (referralOverrideRate != null) settings.referralOverrideRate = referralOverrideRate;
   for (const key of pickupKeys) {
-    if (Object.hasOwn(req.body, key)) settings[key] = typeof req.body[key] === "string" ? req.body[key].trim() : req.body[key];
+    if (key === "pickupOnlyAreas" || !Object.hasOwn(req.body, key)) continue;
+    settings[key] = typeof req.body[key] === "string" ? req.body[key].trim() : req.body[key];
   }
+  if (pickupOnlyAreas) settings.pickupOnlyAreas = pickupOnlyAreas;
 
   await settings.save();
   res.json({ success: true, data: settings });

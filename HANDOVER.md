@@ -73,6 +73,9 @@ settings pages.
 - **Add or change a phone:** Admin → Products. Selling price must be above cost price. Cost price is private to you.
 - **Process an order:** Admin → Orders. A paid order shows the customer's delivery address. Mark it
   **processing**, then **delivered**.
+- **Delivery areas:** customers choose their state and town at checkout (no street address). In Admin → Settings →
+  "Towns where delivery is switched off" you can list towns, such as the town your shop is in, where delivery is not
+  offered, so those customers can only collect from the shop. Customers elsewhere can choose delivery to their town.
 - **Shop pickup:** customers can choose to collect instead of having it delivered. Set your shop address and
   opening hours in Admin → Settings → Shop pickup (switch it off there if you cannot offer it). A pickup order is
   labelled **Shop pickup** with the customer's name and phone. Use **Mark ready for pickup** when it is waiting for

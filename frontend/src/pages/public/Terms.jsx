@@ -19,7 +19,7 @@ const sections = [
     body: [
       "Prices are in Nigerian naira and the price shown when you place your order is the price you pay. Stock is limited and is only reserved once your payment is confirmed.",
       "Your order is confirmed when Flutterwave confirms your payment to us. If an item turns out to be out of stock, or a price was shown by mistake, we may cancel the order and refund you in full.",
-      "At checkout you choose delivery or, where we offer it, collecting your phone from our shop. For delivery you must give a complete and correct address and phone number; for pickup, your name and a phone number we can reach. We are not responsible for delays caused by wrong or incomplete details.",
+      "At checkout you choose delivery or, where we offer it, collecting your phone from our shop. We deliver to the state and town you choose, not to individual street addresses, and we will call you on the phone number you give to arrange the handover. In some towns, such as the town our shop is in, we do not offer delivery and customers collect from the shop instead. For pickup we need your name and a phone number we can reach. We are not responsible for delays caused by wrong or incomplete details.",
     ],
   },
   {
