@@ -12,7 +12,8 @@ router.get("/admin/:id", protect, adminOnly, ctrl.adminGetProduct);
 router.post("/admin", protect, adminOnly, ctrl.createProduct);
 router.patch("/admin/:id", protect, adminOnly, ctrl.updateProduct);
 router.delete("/admin/:id", protect, adminOnly, ctrl.deactivateProduct);
-router.post("/admin/:id/image", protect, adminOnly, productImageUpload, ctrl.uploadProductImage);
-router.delete("/admin/:id/image", protect, adminOnly, ctrl.deleteProductImage);
+router.post("/admin/:id/images", protect, adminOnly, productImageUpload, ctrl.addProductPhoto);
+router.delete("/admin/:id/images/:index", protect, adminOnly, ctrl.deleteProductPhoto);
+router.post("/admin/:id/images/:index/primary", protect, adminOnly, ctrl.makePrimaryPhoto);
 
 module.exports = router;

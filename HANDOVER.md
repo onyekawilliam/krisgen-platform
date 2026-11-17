@@ -71,6 +71,13 @@ settings pages.
 ## Everyday tasks
 
 - **Add or change a phone:** Admin → Products. Selling price must be above cost price. Cost price is private to you.
+- **Phone photos:** each phone can have **one to five photos** (never more than five). In Admin → Products, edit the
+  phone and use **Choose Files** (you can pick several at once). On a phone that already exists, photos save the moment
+  you add them. For a brand-new phone they upload when you save it. The first photo is the **main** one customers see
+  in the shop; use **Make main** under any photo to change it, or **Remove** to delete one. Customers see the main photo
+  with small thumbnails to click through. Use clear, square photos on a plain background, taken with your own phone or
+  supplied to you by your distributor. Do not copy photos from other websites. Each photo must be under 5 MB. Photos
+  upload through Cloudinary, so its three settings must be in Render.
 - **Process an order:** Admin → Orders. A paid order shows the customer's delivery address. Mark it
   **processing**, then **delivered**.
 - **Delivery areas:** customers choose their state and town at checkout (no street address). In Admin → Settings →

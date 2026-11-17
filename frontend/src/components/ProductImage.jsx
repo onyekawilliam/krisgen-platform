@@ -1,5 +1,14 @@
 import { useEffect, useState } from "react";
 
+// Cloudinary can serve each photo resized and in the best format for the visitor's
+// browser (f_auto,q_auto). A phone photo is often 3 MB; this brings it to tens of KB.
+// Other links, and links already carrying a transformation, are left alone.
+export function optimizeImageUrl(url, width) {
+  if (typeof url !== "string" || !url.includes("res.cloudinary.com") || !url.includes("/image/upload/")) return url;
+  if (/\/image\/upload\/[a-z]{1,3}_[^/]*\//.test(url)) return url;
+  return url.replace("/image/upload/", `/image/upload/f_auto,q_auto,w_${width},c_limit/`);
+}
+
 // A stable colour for each phone name, so a shop full of phones without photos
 // still has variety instead of one grey tile repeated.
 function hueFor(text) {
@@ -11,7 +20,7 @@ function hueFor(text) {
 
 // Shows the product photo, or a neat phone illustration with the model name when there is no photo yet.
 // The tint follows the light/dark theme through the --ph-* variables in index.css.
-export default function ProductImage({ src, alt, className = "" }) {
+export default function ProductImage({ src, alt, className = "", width = 800 }) {
   const [failed, setFailed] = useState(false);
 
   useEffect(() => setFailed(false), [src]);
@@ -42,5 +51,14 @@ export default function ProductImage({ src, alt, className = "" }) {
     );
   }
 
-  return <img src={src} alt={alt} loading="lazy" onError={() => setFailed(true)} className={className} />;
+  return (
+    <img
+      src={optimizeImageUrl(src, width)}
+      alt={alt}
+      loading="lazy"
+      decoding="async"
+      onError={() => setFailed(true)}
+      className={className}
+    />
+  );
 }

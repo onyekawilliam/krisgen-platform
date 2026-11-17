@@ -263,6 +263,33 @@ test("product search matches part of a name and sorting by price works", async (
   }
 });
 
+test("a phone can be hidden from the shop and shown again, by admins only", async () => {
+  const adminPath = "/api/products/admin/" + product._id;
+  const shown = async () => (await request("GET", "/api/products?limit=50")).body.data.some((p) => String(p._id) === String(product._id));
+  assert.equal(await shown(), true);
+
+  assert.equal((await request("DELETE", adminPath, undefined, admin)).status, 200);
+  assert.equal(await shown(), false, "customers no longer see it");
+  assert.equal((await request("GET", "/api/products/" + product._id)).status, 404, "and its page is gone for them");
+  const listed = (await request("GET", "/api/products/admin/all", undefined, admin)).body.data.find((p) => String(p._id) === String(product._id));
+  assert.equal(listed.isActive, false, "the admin list still has it, marked inactive");
+
+  assert.equal((await request("PATCH", adminPath, { isActive: true }, admin)).status, 200);
+  assert.equal(await shown(), true, "activating it puts it back in the shop");
+  assert.equal((await request("GET", "/api/products/" + product._id)).status, 200);
+
+  for (const bad of ["yes", "false", 1, 0, null, [], {}]) {
+    assert.equal((await request("PATCH", adminPath, { isActive: bad }, admin)).status, 400, JSON.stringify(bad));
+  }
+  assert.equal(await shown(), true, "refused changes leave it visible");
+
+  for (const [method, body] of [["DELETE"], ["PATCH", { isActive: false }]]) {
+    assert.ok([401, 403].includes((await request(method, adminPath, body, alice)).status), method + " as a customer");
+    assert.equal((await request(method, adminPath, body)).status, 401, method + " when logged out");
+  }
+  assert.equal(await shown(), true);
+});
+
 // ----- auth and input handling -----
 
 test("registering with an operator object as the referral code does not pick a referrer", async () => {

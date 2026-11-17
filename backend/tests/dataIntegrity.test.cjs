@@ -71,7 +71,7 @@ async function request(method, path, body) {
   return { status: response.status, body: await response.json() };
 }
 
-async function storedProduct() { return Product.findById(product._id).select("+costPrice +imagePublicId"); }
+async function storedProduct() { return Product.findById(product._id).select("+costPrice +imagePublicId +imagePublicIds"); }
 const productPath = () => "/api/products/admin/" + product._id;
 const settingsPath = "/api/commissions/admin/settings";
 
@@ -401,20 +401,20 @@ test("product override query updates cannot bypass percentage validation", async
 });
 
 test("product image upload requires authentication and admin authorization", async () => {
-  const unauthenticated = await uploadImage(productPath() + "/image", { userId: null });
+  const unauthenticated = await uploadImage(productPath() + "/images", { userId: null });
   assert.equal(unauthenticated.status, 401);
   const customer = await member("Image Upload Customer");
-  const forbidden = await uploadImage(productPath() + "/image", { userId: customer._id });
+  const forbidden = await uploadImage(productPath() + "/images", { userId: customer._id });
   assert.equal(forbidden.status, 403);
   assert.deepEqual((await storedProduct()).images, []);
 });
 
 test("product image upload rejects unsupported, spoofed and oversized image files", async () => {
-  const unsupported = await uploadImage(productPath() + "/image", { mime: "text/plain" });
+  const unsupported = await uploadImage(productPath() + "/images", { mime: "text/plain" });
   assert.equal(unsupported.status, 400);
-  const spoofed = await uploadImage(productPath() + "/image", { bytes: Buffer.from("not an image") });
+  const spoofed = await uploadImage(productPath() + "/images", { bytes: Buffer.from("not an image") });
   assert.equal(spoofed.status, 400);
-  const oversized = await uploadImage(productPath() + "/image", {
+  const oversized = await uploadImage(productPath() + "/images", {
     bytes: Buffer.concat([Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]), Buffer.alloc(5 * 1024 * 1024)]),
   });
   assert.equal(oversized.status, 413);
@@ -428,15 +428,16 @@ test("product image upload stores the secure URL and Cloudinary public ID", asyn
     publicId: "krisgen/products/phone-test",
   });
   try {
-    const response = await uploadImage(productPath() + "/image");
-    assert.equal(response.status, 200);
+    const response = await uploadImage(productPath() + "/images");
+    assert.equal(response.status, 201);
     const saved = await storedProduct();
     assert.equal(saved.images[0], "https://res.cloudinary.com/test-cloud/image/upload/phone.png");
-    assert.equal(saved.imagePublicId, "krisgen/products/phone-test");
+    assert.deepEqual([...saved.imagePublicIds], ["krisgen/products/phone-test"]);
     const publicResponse = await fetch(baseUrl + "/api/products/" + product._id);
     const publicBody = await publicResponse.json();
     assert.equal(publicBody.data.images[0], saved.images[0]);
     assert.equal(Object.hasOwn(publicBody.data, "imagePublicId"), false);
+    assert.equal(Object.hasOwn(publicBody.data, "imagePublicIds"), false, "Cloudinary IDs are never sent to customers");
   } finally {
     cloudinaryImages.uploadProductImage = originalUpload;
   }
@@ -446,7 +447,7 @@ test("Cloudinary upload failures return a clear error and leave the product unch
   const originalUpload = cloudinaryImages.uploadProductImage;
   cloudinaryImages.uploadProductImage = async () => { throw new Error("mock provider failure"); };
   try {
-    const response = await uploadImage(productPath() + "/image");
+    const response = await uploadImage(productPath() + "/images");
     assert.equal(response.status, 502);
     assert.match(response.body.message, /Cloudinary could not store the product image/i);
     assert.deepEqual((await storedProduct()).images, []);
@@ -455,45 +456,159 @@ test("Cloudinary upload failures return a clear error and leave the product unch
   }
 });
 
-test("replacing and deleting product images preserve shared Cloudinary assets", async () => {
-  const sharedProduct = await Product.create(productBody({
-    name: "Another image reference", images: ["https://res.cloudinary.com/test-cloud/image/upload/shared.png"],
-  }));
-  sharedProduct.imagePublicId = "krisgen/products/shared";
-  await sharedProduct.save();
-  product.images = ["https://res.cloudinary.com/test-cloud/image/upload/old.png"];
-  product.imagePublicId = "krisgen/products/shared";
-  await product.save();
-  await Product.create(productBody({
-    name: "Legacy URL reference", images: ["https://res.cloudinary.com/test-cloud/image/upload/old.png"],
-  }));
+// ----- the photo gallery: one to five photos per phone -----
 
+const cloudUrl = (name) => "https://res.cloudinary.com/test-cloud/image/upload/" + name + ".png";
+
+// Stubs the Cloudinary calls for one test and always restores them.
+async function withCloudinary(fn) {
   const originalUpload = cloudinaryImages.uploadProductImage;
   const originalDelete = cloudinaryImages.deleteProductImage;
-  const deleted = [];
-  cloudinaryImages.uploadProductImage = async () => ({
-    secureUrl: "https://res.cloudinary.com/test-cloud/image/upload/new.png",
-    publicId: "krisgen/products/new",
-  });
-  cloudinaryImages.deleteProductImage = async (publicId) => { deleted.push(publicId); return { result: "ok" }; };
+  const calls = { uploads: 0, deleted: [] };
+  cloudinaryImages.uploadProductImage = async () => {
+    const n = ++calls.uploads;
+    return { secureUrl: cloudUrl("photo" + n), publicId: "krisgen/products/photo" + n };
+  };
+  cloudinaryImages.deleteProductImage = async (publicId) => { calls.deleted.push(publicId); return { result: "ok" }; };
   try {
-    const replacement = await uploadImage(productPath() + "/image");
-    assert.equal(replacement.status, 200);
-    assert.deepEqual(deleted, [], "shared old asset is retained");
-
-    const removed = await fetch(baseUrl + productPath() + "/image", {
-      method: "DELETE",
-      headers: { Authorization: "Bearer " + jwt.sign({ id: String(admin._id) }, process.env.JWT_SECRET) },
-    });
-    assert.equal(removed.status, 200);
-    assert.deepEqual(deleted, ["krisgen/products/new"], "unreferenced current asset is removed");
-    assert.equal((await storedProduct()).images.length, 0);
-    assert.equal((await Product.findById(sharedProduct._id).select("+imagePublicId")).imagePublicId,
-      "krisgen/products/shared");
+    return await fn(calls);
   } finally {
     cloudinaryImages.uploadProductImage = originalUpload;
     cloudinaryImages.deleteProductImage = originalDelete;
   }
+}
+
+async function adminCall(method, path) {
+  const response = await fetch(baseUrl + path, {
+    method, headers: { Authorization: "Bearer " + jwt.sign({ id: String(admin._id) }, process.env.JWT_SECRET) },
+  });
+  return { status: response.status, body: await response.json() };
+}
+
+test("a phone can have one photo, or up to five, added one at a time in order", async () => {
+  await withCloudinary(async (calls) => {
+    for (let n = 1; n <= 5; n++) {
+      const response = await uploadImage(productPath() + "/images");
+      assert.equal(response.status, 201, "photo " + n + ": " + JSON.stringify(response.body));
+      assert.equal(response.body.data.images.length, n);
+      assert.equal(Object.hasOwn(response.body.data, "imagePublicIds"), false);
+    }
+    const saved = await storedProduct();
+    assert.deepEqual([...saved.images], [1, 2, 3, 4, 5].map((n) => cloudUrl("photo" + n)));
+    assert.deepEqual([...saved.imagePublicIds], [1, 2, 3, 4, 5].map((n) => "krisgen/products/photo" + n));
+
+    const sixth = await uploadImage(productPath() + "/images");
+    assert.equal(sixth.status, 409);
+    assert.match(sixth.body.message, /at most 5 photos/i);
+    assert.equal(calls.uploads, 5, "the sixth file is refused before it is sent to Cloudinary");
+    assert.equal((await storedProduct()).images.length, 5);
+  });
+});
+
+test("uploading several photos at once can never push a phone past five", async () => {
+  await withCloudinary(async (calls) => {
+    for (let n = 0; n < 3; n++) assert.equal((await uploadImage(productPath() + "/images")).status, 201);
+    const results = await Promise.all(Array.from({ length: 4 }, () => uploadImage(productPath() + "/images")));
+    const saved = await storedProduct();
+    assert.equal(saved.images.length, 5);
+    assert.equal(saved.imagePublicIds.length, 5, "every photo keeps its own Cloudinary ID");
+    assert.equal(results.filter((r) => r.status === 201).length, 2);
+    assert.ok(results.filter((r) => r.status !== 201).every((r) => r.status === 409));
+    assert.equal(calls.deleted.length, results.filter((r) => r.status === 409).length,
+      "an upload that lost the race is cleaned up from Cloudinary");
+  });
+});
+
+test("removing a photo keeps the others in order and tidies Cloudinary", async () => {
+  await withCloudinary(async (calls) => {
+    for (let n = 0; n < 3; n++) await uploadImage(productPath() + "/images");
+    const removed = await adminCall("DELETE", productPath() + "/images/1");
+    assert.equal(removed.status, 200);
+    const saved = await storedProduct();
+    assert.deepEqual([...saved.images], [cloudUrl("photo1"), cloudUrl("photo3")]);
+    assert.deepEqual([...saved.imagePublicIds], ["krisgen/products/photo1", "krisgen/products/photo3"]);
+    assert.deepEqual(calls.deleted, ["krisgen/products/photo2"]);
+
+    for (const bad of ["5", "2", "-1", "abc", "1.5", "123"]) {
+      assert.equal((await adminCall("DELETE", productPath() + "/images/" + bad)).status, 404, bad);
+    }
+    assert.equal((await storedProduct()).images.length, 2);
+    assert.equal((await adminCall("DELETE", productPath() + "/images/0")).status, 200);
+    assert.equal((await adminCall("DELETE", productPath() + "/images/0")).status, 200);
+    assert.equal((await storedProduct()).images.length, 0, "a phone can end up with no photos");
+    assert.equal((await adminCall("DELETE", productPath() + "/images/0")).status, 404);
+  });
+});
+
+test("any photo can be made the main one, and only admins can change photos", async () => {
+  await withCloudinary(async () => {
+    for (let n = 0; n < 3; n++) await uploadImage(productPath() + "/images");
+    assert.equal((await adminCall("POST", productPath() + "/images/2/primary")).status, 200);
+    let saved = await storedProduct();
+    assert.deepEqual([...saved.images], [cloudUrl("photo3"), cloudUrl("photo1"), cloudUrl("photo2")]);
+    assert.deepEqual([...saved.imagePublicIds], ["krisgen/products/photo3", "krisgen/products/photo1", "krisgen/products/photo2"]);
+    assert.equal((await adminCall("POST", productPath() + "/images/0/primary")).status, 200, "already main: nothing changes");
+    saved = await storedProduct();
+    assert.equal(saved.images[0], cloudUrl("photo3"));
+    assert.equal((await adminCall("POST", productPath() + "/images/9/primary")).status, 404);
+
+    const customer = await member("Gallery Customer");
+    for (const [method, path] of [["POST", "/images/1/primary"], ["DELETE", "/images/1"]]) {
+      const response = await fetch(baseUrl + productPath() + path, {
+        method, headers: { Authorization: "Bearer " + jwt.sign({ id: String(customer._id) }, process.env.JWT_SECRET) },
+      });
+      assert.equal(response.status, 403, method + " " + path);
+    }
+    assert.equal((await uploadImage(productPath() + "/images", { userId: customer._id })).status, 403);
+    assert.equal((await storedProduct()).images.length, 3);
+  });
+});
+
+test("removing a photo that another phone still uses leaves it in Cloudinary", async () => {
+  const shared = cloudUrl("shared");
+  const other = await Product.create(productBody({ name: "Uses the same photo", images: [shared] }));
+  other.imagePublicIds = ["krisgen/products/shared"];
+  await other.save();
+  product.images = [shared];
+  product.imagePublicIds = ["krisgen/products/shared"];
+  await product.save();
+  await Product.create(productBody({ name: "Old link reference", images: [cloudUrl("old")] }));
+
+  await withCloudinary(async (calls) => {
+    assert.equal((await uploadImage(productPath() + "/images")).status, 201);
+    assert.equal((await adminCall("DELETE", productPath() + "/images/0")).status, 200);
+    assert.deepEqual(calls.deleted, [], "the shared photo stays");
+    assert.deepEqual([...(await Product.findById(other._id).select("+imagePublicIds")).imagePublicIds], ["krisgen/products/shared"]);
+    assert.equal((await adminCall("DELETE", productPath() + "/images/0")).status, 200);
+    assert.deepEqual(calls.deleted, ["krisgen/products/photo1"], "an unshared photo is removed");
+  });
+});
+
+test("a phone saved before galleries keeps its photo when more are added", async () => {
+  await Product.collection.updateOne({ _id: product._id }, {
+    $set: { images: [cloudUrl("legacy")], imagePublicId: "krisgen/products/legacy" }, $unset: { imagePublicIds: "" },
+  });
+  await withCloudinary(async (calls) => {
+    assert.equal((await uploadImage(productPath() + "/images")).status, 201);
+    const saved = await storedProduct();
+    assert.deepEqual([...saved.images], [cloudUrl("legacy"), cloudUrl("photo1")]);
+    assert.deepEqual([...saved.imagePublicIds], ["krisgen/products/legacy", "krisgen/products/photo1"]);
+    assert.equal(saved.imagePublicId, undefined, "the old single-ID field is retired");
+    assert.equal((await adminCall("DELETE", productPath() + "/images/0")).status, 200);
+    assert.deepEqual(calls.deleted, ["krisgen/products/legacy"]);
+  });
+});
+
+test("a photo list sent when editing a phone is limited to five secure links", async () => {
+  const send = (images) => request("PATCH", productPath(), { images });
+  assert.equal((await send(Array.from({ length: 6 }, (_, i) => cloudUrl("p" + i)))).status, 400);
+  for (const bad of ["not a list", [5], [null], ["http://insecure.example/a.png"], ["javascript:alert(1)"], ["https://x.example/" + "a".repeat(500)], { 0: cloudUrl("x") }]) {
+    assert.equal((await send(bad)).status, 400, JSON.stringify(bad).slice(0, 50));
+  }
+  assert.equal((await send([cloudUrl("a"), cloudUrl("b")])).status, 200);
+  assert.equal((await send([])).status, 200, "a phone may have no photos");
+  assert.equal((await storedProduct()).images.length, 0);
+  assert.equal((await request("POST", "/api/products/admin", productBody({ name: "Too many", images: Array.from({ length: 6 }, (_, i) => cloudUrl("q" + i)) }))).status, 400);
 });
 
 test("admin commission list traces registered and walk-in commissions to their saved orders", async () => {

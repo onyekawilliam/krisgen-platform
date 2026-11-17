@@ -23,6 +23,7 @@ export default function ProductDetails() {
   const [pendingOrder, setPendingOrder] = useState(null);
   const [loadError, setLoadError] = useState("");
   const [address, setAddress] = useState({ fullName: "", phone: "", address: "", city: "", state: "" });
+  const [activePhoto, setActivePhoto] = useState(0);
   const [fulfillment, setFulfillment] = useState("delivery");
   const [pickup, setPickup] = useState(null);
   const [delivery, setDelivery] = useState({ states: [], pickupOnlyAreas: [] });
@@ -31,7 +32,10 @@ export default function ProductDetails() {
     setLoadError("");
     api
       .get(`/products/${id}`)
-      .then((res) => setProduct(res.data.data))
+      .then((res) => {
+        setProduct(res.data.data);
+        setActivePhoto(0);
+      })
       .catch((err) =>
         setLoadError(
           err.response?.status === 404 || err.response?.status === 400
@@ -173,6 +177,8 @@ async function handleBuy() {
   }
 }
 
+  const photos = product?.images || [];
+
   if (loadError) {
     return (
       <div className="max-w-4xl mx-auto px-5 py-10">
@@ -185,8 +191,34 @@ async function handleBuy() {
 
   return (
     <div className="mx-auto grid max-w-6xl items-start gap-8 px-5 py-8 md:grid-cols-[1.05fr_1fr] md:gap-12 md:py-10">
-      <div className="card aspect-square overflow-hidden bg-navy-panel2 p-0 md:sticky md:top-32">
-        <ProductImage src={product.images?.[0]} alt={product.name} className="h-full w-full object-contain" />
+      <div className="md:sticky md:top-32">
+        <div className="card aspect-square overflow-hidden bg-navy-panel2 p-0">
+          <ProductImage
+            src={product.images?.[activePhoto] || product.images?.[0]}
+            alt={photos.length > 1 ? `${product.name}, photo ${activePhoto + 1} of ${photos.length}` : product.name}
+            width={1200}
+            className="h-full w-full object-contain"
+          />
+        </div>
+        {photos.length > 1 && (
+          <ul className="mt-3 flex gap-2.5" aria-label="Photos">
+            {photos.map((url, i) => (
+              <li key={url} className="w-1/5 max-w-[88px]">
+                <button
+                  type="button"
+                  onClick={() => setActivePhoto(i)}
+                  aria-label={`Show photo ${i + 1} of ${photos.length}`}
+                  aria-current={i === activePhoto}
+                  className={`block aspect-square w-full overflow-hidden rounded-xl border-2 bg-navy-panel2 transition ${
+                    i === activePhoto ? "border-gold" : "border-transparent hover:border-navy-line"
+                  }`}
+                >
+                  <ProductImage src={url} alt="" width={200} className="h-full w-full object-contain" />
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
       <div>
         <nav aria-label="Breadcrumb" className="mb-4 text-sm text-ink-faint">
