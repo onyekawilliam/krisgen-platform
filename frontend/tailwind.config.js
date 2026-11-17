@@ -1,16 +1,29 @@
 /** @type {import('tailwindcss').Config} */
+
+// Every colour is a CSS variable (see src/index.css) so the whole site switches
+// between the light and dark themes. The token NAMES are unchanged from the
+// original design, so existing classes keep working.
+const token = (name) => `rgb(var(${name}) / <alpha-value>)`;
+
 export default {
   content: ["./index.html", "./src/**/*.{js,jsx}"],
+  darkMode: ["class", '[data-theme="dark"]'],
   theme: {
     extend: {
       colors: {
-        // Same names as before, so every page picks up the refreshed palette.
-        navy: { deep: "#0B1020", panel: "#121A2E", panel2: "#1A2540", line: "#1F2A44" },
-        gold: { DEFAULT: "#E0B04C", bright: "#F2CB78" },
-        teal: "#5FB8C0",
-        coral: "#EE8A6A",
-        mint: "#7FD6A6",
-        ink: { DEFAULT: "#E8ECF5", dim: "#9AA6BF", faint: "#8590AB" },
+        navy: {
+          deep: token("--c-bg"), // page background
+          panel: token("--c-surface"), // cards and panels
+          panel2: token("--c-surface-2"), // subtle fills, hovers
+          line: token("--c-line"), // borders and dividers
+        },
+        gold: { DEFAULT: token("--c-gold"), bright: token("--c-gold-text") },
+        teal: token("--c-link"),
+        coral: token("--c-danger"),
+        mint: token("--c-success"),
+        ink: { DEFAULT: token("--c-ink"), dim: token("--c-ink-dim"), faint: token("--c-ink-faint") },
+        // Always-dark brand surfaces (announcement bar, hero, footer) in both themes.
+        brand: { DEFAULT: "#0B1020", raised: "#131C33", line: "#222E4D", text: "#E8ECF5", dim: "#A3AECA" },
       },
       fontFamily: {
         display: ["'Space Grotesk'", "sans-serif"],
@@ -18,8 +31,9 @@ export default {
         mono: ["'IBM Plex Mono'", "monospace"],
       },
       boxShadow: {
-        glow: "0 10px 40px -12px rgba(224, 176, 76, 0.35)",
-        lift: "0 14px 34px -14px rgba(0, 0, 0, 0.6)",
+        card: "var(--shadow-card)",
+        lift: "var(--shadow-lift)",
+        glow: "0 12px 34px -12px rgb(240 180 41 / 0.55)",
       },
     },
   },

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate, useLocation, Link } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import PasswordInput from "../../components/PasswordInput";
+import AuthLayout from "../../components/AuthLayout";
 
 export default function Login() {
   const { login } = useAuth();
@@ -27,7 +28,7 @@ export default function Login() {
   }
 
   return (
-    <div className="mx-4 my-12 rounded-2xl border border-navy-line bg-navy-panel p-7 sm:mx-auto sm:max-w-md md:my-20 md:p-8">
+    <AuthLayout>
       <h1 className="font-display text-2xl font-bold mb-1">Log in</h1>
       <p className="text-ink-dim text-sm mb-6">Access your dashboard, referrals and orders.</p>
 
@@ -52,6 +53,6 @@ export default function Login() {
       <p className="text-ink-dim text-sm mt-5">
         No account? <Link to="/register" className="text-teal">Register free</Link>
       </p>
-    </div>
+    </AuthLayout>
   );
 }

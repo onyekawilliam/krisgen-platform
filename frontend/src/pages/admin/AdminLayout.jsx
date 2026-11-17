@@ -1,4 +1,5 @@
-import { NavLink, Outlet, useNavigate } from "react-router-dom";
+import { Link, NavLink, Outlet, useNavigate } from "react-router-dom";
+import ThemeToggle from "../../components/ThemeToggle";
 import { useAuth } from "../../context/AuthContext";
 
 const tabs = [
@@ -28,9 +29,13 @@ export default function AdminLayout() {
           <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-gold text-[13px] font-bold text-navy-deep">KC</span>
           Admin
         </div>
-        <button onClick={handleLogout} className="rounded-xl border border-navy-line px-4 py-2 text-sm text-ink-dim transition-colors hover:border-coral hover:text-coral">
-          Log out
-        </button>
+        <div className="flex items-center gap-2">
+          <Link to="/" className="rounded-full px-3 py-2 text-sm text-ink-dim transition-colors hover:bg-navy-panel2 hover:text-ink">View shop</Link>
+          <ThemeToggle />
+          <button onClick={handleLogout} className="rounded-full border border-navy-line px-4 py-2 text-sm text-ink-dim transition-colors hover:border-coral hover:text-coral">
+            Log out
+          </button>
+        </div>
       </div>
       <div className="flex flex-col md:flex-row">
         <nav aria-label="Admin" className="no-scrollbar flex flex-shrink-0 gap-1 overflow-x-auto border-b border-navy-line p-3 md:w-52 md:flex-col md:border-b-0 md:border-r">

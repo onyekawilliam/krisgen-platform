@@ -237,6 +237,31 @@ test("product listing caps the page size and ignores operator-style query values
   assert.equal(operator.body.data.every(p => p.costPrice === undefined), true);
 });
 
+test("product search matches part of a name and sorting by price works", async () => {
+  await Product.insertMany([
+    { name: "Camon Alpha", brand: "Tecno", model: "Alpha", costPrice: 500, sellingPrice: 3000, stock: 1 },
+    { name: "Spark Beta", brand: "Tecno", model: "Beta", costPrice: 500, sellingPrice: 1000, stock: 1 },
+    { name: "Camon Gamma", brand: "Itel", model: "Gamma", costPrice: 500, sellingPrice: 2000, stock: 1 },
+  ]);
+  const names = body => body.data.map(p => p.name);
+  const asc = await request("GET", "/api/products?sort=price_asc");
+  assert.deepEqual(asc.body.data.map(p => p.sellingPrice), [1000, 2000, 3000, 150000]);
+  const desc = await request("GET", "/api/products?sort=price_desc");
+  assert.deepEqual(desc.body.data.map(p => p.sellingPrice), [150000, 3000, 2000, 1000]);
+  assert.equal((await request("GET", "/api/products?sort=nonsense")).status, 200);
+  assert.equal((await request("GET", "/api/products?sort[$ne]=x")).status, 200);
+
+  const partial = await request("GET", "/api/products?search=cam&sort=price_asc");
+  assert.deepEqual(names(partial.body), ["Camon Gamma", "Camon Alpha"]);
+  const byBrand = await request("GET", "/api/products?search=itel");
+  assert.deepEqual(names(byBrand.body), ["Camon Gamma"]);
+  for (const search of ["(", "[a-", "a.*", "\\"]) {
+    const response = await request("GET", "/api/products?search=" + encodeURIComponent(search));
+    assert.equal(response.status, 200, search);
+    assert.equal(response.body.data.length, 0, "special characters are literal, so " + search + " matches nothing");
+  }
+});
+
 // ----- auth and input handling -----
 
 test("registering with an operator object as the referral code does not pick a referrer", async () => {

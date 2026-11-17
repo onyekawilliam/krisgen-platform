@@ -12,7 +12,7 @@ export default function Affiliate() {
 
       <div className="mb-10 mt-10 grid gap-5 md:grid-cols-2">
         <div className="card p-6">
-          <span className="font-mono text-sm text-gold">01</span>
+          <span className="font-mono text-sm text-gold-bright">01</span>
           <h2 className="mb-2 mt-2 font-display text-lg font-semibold">Direct sale</h2>
           <p className="text-sm leading-relaxed text-ink-dim">
             You sell a phone — to a customer using your link. You earn a commission on the profit
@@ -20,7 +20,7 @@ export default function Affiliate() {
           </p>
         </div>
         <div className="card p-6">
-          <span className="font-mono text-sm text-gold">02</span>
+          <span className="font-mono text-sm text-gold-bright">02</span>
           <h2 className="mb-2 mt-2 font-display text-lg font-semibold">Referral override</h2>
           <p className="text-sm leading-relaxed text-ink-dim">
             Someone you referred makes a direct sale. You earn a smaller share of that same sale's profit — one

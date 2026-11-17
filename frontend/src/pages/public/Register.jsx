@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate, useSearchParams, Link } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import PasswordInput from "../../components/PasswordInput";
+import AuthLayout from "../../components/AuthLayout";
 
 export default function Register() {
   const { register } = useAuth();
@@ -28,7 +29,7 @@ export default function Register() {
   }
 
   return (
-    <div className="mx-4 my-12 rounded-2xl border border-navy-line bg-navy-panel p-7 sm:mx-auto sm:max-w-md md:my-20 md:p-8">
+    <AuthLayout>
       <h1 className="font-display text-2xl font-bold mb-1">Create a free account</h1>
       <p className="text-ink-dim text-sm mb-6">
         No fee to register. You'll get a referral link automatically.
@@ -68,6 +69,6 @@ export default function Register() {
       <p className="text-ink-dim text-sm mt-5">
         Already have an account? <Link to="/login" className="text-teal">Log in</Link>
       </p>
-    </div>
+    </AuthLayout>
   );
 }

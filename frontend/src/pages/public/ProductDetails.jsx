@@ -155,22 +155,27 @@ async function handleBuy() {
   if (!product) return <div className="max-w-4xl mx-auto px-5 py-10 text-ink-dim">Loading…</div>;
 
   return (
-    <div className="mx-auto grid max-w-5xl items-start gap-10 px-5 py-10 md:grid-cols-2 md:gap-14">
-      <div className="card aspect-square overflow-hidden p-0 md:sticky md:top-24">
+    <div className="mx-auto grid max-w-6xl items-start gap-8 px-5 py-8 md:grid-cols-[1.05fr_1fr] md:gap-12 md:py-10">
+      <div className="card aspect-square overflow-hidden bg-navy-panel2 p-0 md:sticky md:top-32">
         <ProductImage src={product.images?.[0]} alt={product.name} className="h-full w-full object-contain" />
       </div>
       <div>
-        <Link to="/shop" className="mb-4 inline-block text-sm text-ink-dim transition-colors hover:text-ink">← All phones</Link>
+        <nav aria-label="Breadcrumb" className="mb-4 text-sm text-ink-faint">
+          <Link to="/" className="hover:text-ink">Home</Link> <span aria-hidden="true">/</span>{" "}
+          <Link to="/shop" className="hover:text-ink">Phones</Link> <span aria-hidden="true">/</span>{" "}
+          <Link to={`/shop?brand=${product.brand}`} className="text-ink-dim hover:text-ink">{product.brand}</Link>
+        </nav>
         <p className="eyebrow">{product.brand}</p>
         <h1 className="mt-2 font-display text-3xl font-bold tracking-tight md:text-4xl">{product.name}</h1>
         <dl className="mt-5 grid grid-cols-3 gap-3">
-          {product.ram && <div className="card p-3"><dt className="text-[11px] uppercase tracking-wider text-ink-faint">RAM</dt><dd className="mt-1 font-mono text-sm">{product.ram}</dd></div>}
-          {product.storage && <div className="card p-3"><dt className="text-[11px] uppercase tracking-wider text-ink-faint">Storage</dt><dd className="mt-1 font-mono text-sm">{product.storage}</dd></div>}
-          {product.specifications?.camera && <div className="card p-3"><dt className="text-[11px] uppercase tracking-wider text-ink-faint">Camera</dt><dd className="mt-1 font-mono text-sm">{product.specifications.camera}</dd></div>}
+          {product.ram && <div className="rounded-xl bg-navy-panel2 p-3"><dt className="text-[11px] uppercase tracking-wider text-ink-faint">RAM</dt><dd className="mt-1 font-mono text-sm">{product.ram}</dd></div>}
+          {product.storage && <div className="rounded-xl bg-navy-panel2 p-3"><dt className="text-[11px] uppercase tracking-wider text-ink-faint">Storage</dt><dd className="mt-1 font-mono text-sm">{product.storage}</dd></div>}
+          {product.specifications?.camera && <div className="rounded-xl bg-navy-panel2 p-3"><dt className="text-[11px] uppercase tracking-wider text-ink-faint">Camera</dt><dd className="mt-1 font-mono text-sm">{product.specifications.camera}</dd></div>}
         </dl>
         {product.description && <p className="mt-5 text-sm leading-relaxed text-ink-dim">{product.description}</p>}
 
-        <div className="mt-7 font-display text-4xl font-bold tracking-tight text-gold-bright">{naira(product.sellingPrice)}</div>
+        <div className="card mt-7 p-6 shadow-lift">
+        <div className="font-display text-4xl font-bold tracking-tight">{naira(product.sellingPrice)}</div>
 
         <div className="mt-5 flex items-center gap-3">
           <label className="label mb-0" htmlFor="qty">Qty</label>
@@ -186,7 +191,7 @@ async function handleBuy() {
           <span className={`badge ${product.stock > 0 ? "badge-ok" : "badge-muted"}`}>{product.stock > 0 ? `${product.stock} in stock` : "Out of stock"}</span>
         </div>
 
-        <fieldset className="mt-7 rounded-2xl border border-navy-line bg-navy-panel/50 p-5">
+        <fieldset className="mt-6 rounded-xl border border-navy-line bg-navy-deep/60 p-4">
           <legend className="px-2 font-display text-sm font-semibold">Delivery details</legend>
           <div className="grid grid-cols-2 gap-3">
             <div className="col-span-2">
@@ -219,7 +224,7 @@ async function handleBuy() {
 
         {error && <p role="alert" className="mt-4 text-sm text-coral">{error}</p>}
 
-        <button onClick={handleBuy} disabled={placing || product.stock === 0} className="btn-primary mt-6 w-full py-3.5 text-base md:w-auto md:px-10">
+        <button onClick={handleBuy} disabled={placing || product.stock === 0} className="btn-primary mt-6 w-full py-3.5 text-base">
           {placing ? "Placing order…" : product.stock === 0 ? "Out of stock" : "Buy now"}
         </button>
 
@@ -238,6 +243,7 @@ async function handleBuy() {
             <a href="https://wa.me/2348035142589" target="_blank" rel="noopener noreferrer" className="text-gold-bright hover:underline">WhatsApp us</a>
           </li>
         </ul>
+        </div>
       </div>
     </div>
   );

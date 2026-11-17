@@ -6,32 +6,47 @@ function naira(n) {
 }
 
 export default function ProductCard({ product }) {
-  const inStock = product.stock > 0;
+  const stock = Number(product.stock) || 0;
   const specs = [product.ram && `${product.ram} RAM`, product.storage, product.specifications?.camera].filter(Boolean);
+  const href = `/shop/${product._id}`;
 
   return (
-    <div className="card card-hover flex flex-col gap-3 p-4">
-      <Link to={`/shop/${product._id}`} tabIndex={-1} aria-hidden="true" className="block aspect-square overflow-hidden rounded-xl bg-navy-deep">
-        <ProductImage src={product.images?.[0]} alt={product.name} className="h-full w-full object-contain" />
+    <article className={`group card card-hover flex min-w-0 flex-col gap-3 p-3.5 ${stock === 0 ? "opacity-80" : ""}`}>
+      <Link to={href} tabIndex={-1} aria-hidden="true" className="relative block aspect-square overflow-hidden rounded-xl bg-navy-panel2">
+        <ProductImage src={product.images?.[0]} alt={product.name} className="h-full w-full object-contain transition duration-300 group-hover:scale-[1.03]" />
+        {stock === 0 && (
+          <span className="absolute left-2.5 top-2.5 rounded-full bg-brand px-2.5 py-1 text-[11px] font-semibold text-brand-text">Sold out</span>
+        )}
+        {stock > 0 && stock <= 3 && (
+          <span className="absolute left-2.5 top-2.5 rounded-full bg-gold px-2.5 py-1 text-[11px] font-semibold text-brand">
+            Only {stock} left
+          </span>
+        )}
       </Link>
 
-      <div className="flex items-center justify-between">
-        <span className="text-[11px] font-semibold uppercase tracking-[0.12em] text-gold">{product.brand}</span>
-        <span className={`badge ${inStock ? "badge-ok" : "badge-muted"}`}>{inStock ? "In stock" : "Out of stock"}</span>
+      <div className="px-1">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-ink-faint">{product.brand}</p>
+        <h3 className="mt-1 font-display text-base font-semibold leading-snug">
+          <Link to={href} className="hover:text-gold-bright">{product.name}</Link>
+        </h3>
+        {specs.length > 0 && (
+          <ul className="mt-2.5 flex flex-wrap gap-1.5">
+            {specs.map((s) => (
+              <li key={s} className="rounded-md bg-navy-panel2 px-2 py-1 text-[11px] font-medium text-ink-dim">{s}</li>
+            ))}
+          </ul>
+        )}
       </div>
 
-      <h3 className="font-display text-base font-semibold leading-snug">
-        <Link to={`/shop/${product._id}`} className="hover:text-gold-bright">{product.name}</Link>
-      </h3>
-
-      {specs.length > 0 && <p className="text-xs leading-relaxed text-ink-dim">{specs.join(" · ")}</p>}
-
-      <div className="mt-auto flex items-center justify-between border-t border-navy-line pt-3">
-        <span className="font-display text-lg font-bold text-gold-bright">{naira(product.sellingPrice)}</span>
-        <Link to={`/shop/${product._id}`} className="btn-outline px-4 py-2 text-sm">
-          View
-        </Link>
+      <div className="mt-auto flex flex-col gap-3 px-1 pt-1 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <div className="font-display text-xl font-bold tracking-tight">{naira(product.sellingPrice)}</div>
+          <div className={`mt-0.5 text-xs font-medium ${stock > 0 ? "text-mint" : "text-ink-faint"}`}>
+            {stock > 0 ? "In stock" : "Out of stock"}
+          </div>
+        </div>
+        <Link to={href} className="btn-primary w-full px-4 py-2 text-sm sm:w-auto">View</Link>
       </div>
-    </div>
+    </article>
   );
 }

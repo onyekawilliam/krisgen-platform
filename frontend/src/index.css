@@ -2,6 +2,50 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ---------- Theme tokens (R G B, so Tailwind can add opacity) ---------- */
+:root {
+  --c-bg: 245 246 250;
+  --c-surface: 255 255 255;
+  --c-surface-2: 237 240 247;
+  --c-line: 224 229 239;
+  --c-ink: 15 23 42;
+  --c-ink-dim: 71 85 105;
+  --c-ink-faint: 100 116 139;
+  --c-gold: 240 180 41; /* buttons and highlights, always paired with dark text */
+  --c-gold-text: 146 92 0; /* gold used AS text, dark enough to read on white */
+  --c-link: 14 116 144;
+  --c-danger: 190 52 25;
+  --c-success: 4 120 87;
+  --shadow-card: 0 1px 2px rgb(15 23 42 / 0.05), 0 8px 20px -10px rgb(15 23 42 / 0.12);
+  --shadow-lift: 0 18px 34px -16px rgb(15 23 42 / 0.28);
+  /* product placeholder tint */
+  --ph-1: 88%;
+  --ph-2: 93%;
+  --ph-3: 97%;
+  color-scheme: light;
+}
+
+[data-theme="dark"] {
+  --c-bg: 11 16 32;
+  --c-surface: 18 26 46;
+  --c-surface-2: 26 37 64;
+  --c-line: 31 42 68;
+  --c-ink: 232 236 245;
+  --c-ink-dim: 154 166 191;
+  --c-ink-faint: 133 144 171;
+  --c-gold: 224 176 76;
+  --c-gold-text: 242 203 120;
+  --c-link: 95 184 192;
+  --c-danger: 238 138 106;
+  --c-success: 127 214 166;
+  --shadow-card: none;
+  --shadow-lift: 0 14px 34px -14px rgb(0 0 0 / 0.6);
+  --ph-1: 22%;
+  --ph-2: 14%;
+  --ph-3: 9%;
+  color-scheme: dark;
+}
+
 html {
   scroll-behavior: smooth;
 }
@@ -13,7 +57,7 @@ body {
 
 /* One clear keyboard focus ring everywhere. */
 :focus-visible {
-  outline: 2px solid theme("colors.gold.DEFAULT");
+  outline: 2px solid rgb(var(--c-link));
   outline-offset: 2px;
 }
 
@@ -27,8 +71,6 @@ body {
   }
 }
 
-/* Shared building blocks. In the components layer so a utility such as
-   "py-2 px-4" on an element can still make a button smaller. */
 .no-scrollbar {
   scrollbar-width: none;
 }
@@ -36,28 +78,30 @@ body {
   display: none;
 }
 
+/* Shared building blocks. In the components layer so a utility such as
+   "py-2 px-4" on an element can still make a button smaller. */
 @layer components {
   .btn-primary {
-    @apply inline-flex items-center justify-center gap-2 rounded-xl bg-gold px-6 py-3 font-semibold text-navy-deep transition hover:bg-gold-bright hover:shadow-glow active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50;
+    @apply inline-flex items-center justify-center gap-2 rounded-full bg-gold px-6 py-3 font-semibold text-brand shadow-sm transition hover:brightness-95 hover:shadow-glow active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50;
   }
   .btn-outline,
   .btn-secondary {
-    @apply inline-flex items-center justify-center gap-2 rounded-xl border border-navy-line bg-transparent px-6 py-3 font-medium text-ink transition hover:border-gold hover:text-gold-bright active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50;
+    @apply inline-flex items-center justify-center gap-2 rounded-full border border-navy-line bg-navy-panel px-6 py-3 font-medium text-ink transition hover:border-ink-faint active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50;
   }
   .card {
-    @apply rounded-2xl border border-navy-line bg-navy-panel p-5;
+    @apply rounded-2xl border border-navy-line bg-navy-panel p-5 shadow-card;
   }
   .card-hover {
-    @apply transition duration-200 hover:-translate-y-0.5 hover:border-navy-panel2 hover:shadow-lift;
+    @apply transition duration-200 hover:-translate-y-0.5 hover:shadow-lift;
   }
   .input {
-    @apply w-full rounded-xl border border-navy-line bg-navy-deep px-3.5 py-3 text-sm text-ink placeholder:text-ink-faint transition focus:border-gold focus:outline-none focus:ring-2 focus:ring-gold/25;
+    @apply w-full rounded-xl border border-navy-line bg-navy-deep px-3.5 py-3 text-sm text-ink placeholder:text-ink-faint transition focus:border-gold focus:outline-none focus:ring-2 focus:ring-gold/30;
   }
   .label {
     @apply mb-1.5 block text-xs font-medium text-ink-dim;
   }
   .eyebrow {
-    @apply text-xs font-semibold uppercase tracking-[0.14em] text-gold;
+    @apply text-xs font-semibold uppercase tracking-[0.14em] text-gold-bright;
   }
   .badge {
     @apply inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-semibold;
@@ -69,6 +113,9 @@ body {
     @apply bg-navy-panel2 text-ink-dim;
   }
   .page-title {
+    @apply font-display text-2xl font-bold tracking-tight md:text-3xl;
+  }
+  .section-title {
     @apply font-display text-2xl font-bold tracking-tight md:text-3xl;
   }
 }
