@@ -1,8 +1,10 @@
 // The shared frame for log in, register and password pages: a short brand panel
 // beside the form on wide screens, and just the form on a phone.
+import { onlinePayments } from "../config";
+
 const points = [
   "Genuine phones at dealer prices",
-  "Pay by card, bank transfer or USSD",
+  onlinePayments ? "Pay by card, bank transfer or USSD" : "Order by call or WhatsApp",
   "Free referral program, paid on real sales",
 ];
 

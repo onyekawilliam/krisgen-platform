@@ -5,6 +5,7 @@ import { useAuth } from "../../context/AuthContext";
 import { useFlutterwave, closePaymentModal } from "flutterwave-react-v3";
 import ProductImage from "../../components/ProductImage";
 import { blockedArea } from "../../utils/delivery";
+import { onlinePayments, SHOP_PHONE, SHOP_WHATSAPP } from "../../config";
 
 
 function naira(n) {
@@ -189,6 +190,10 @@ async function handleBuy() {
   }
   if (!product) return <div className="max-w-4xl mx-auto px-5 py-10 text-ink-dim">Loading…</div>;
 
+  const whatsappLink = `https://wa.me/${SHOP_WHATSAPP}?text=${encodeURIComponent(
+    `Hello Krisgen, I would like to order: ${product.name} (${naira(product.sellingPrice)}) x ${qty}. Please confirm it is available and how to pay.`
+  )}`;
+
   return (
     <div className="mx-auto grid max-w-6xl items-start gap-8 px-5 py-8 md:grid-cols-[1.05fr_1fr] md:gap-12 md:py-10">
       <div className="md:sticky md:top-32">
@@ -252,6 +257,8 @@ async function handleBuy() {
           <span className={`badge ${product.stock > 0 ? "badge-ok" : "badge-muted"}`}>{product.stock > 0 ? `${product.stock} in stock` : "Out of stock"}</span>
         </div>
 
+        {onlinePayments ? (
+        <>
         {pickupAvailable && (
           <div className="mt-6" role="radiogroup" aria-label="How would you like to get your phone?">
             <p className="label">How would you like to get it?</p>
@@ -353,21 +360,42 @@ async function handleBuy() {
         <button onClick={handleBuy} disabled={placing || product.stock === 0 || Boolean(noDeliveryHere)} className="btn-primary mt-6 w-full py-3.5 text-base">
           {placing ? "Placing order…" : product.stock === 0 ? "Out of stock" : "Buy now"}
         </button>
+        </>
+        ) : (
+        <div className="mt-6">
+          <a
+            href={whatsappLink}
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-disabled={product.stock === 0}
+            className={`btn-primary w-full py-3.5 text-base ${product.stock === 0 ? "pointer-events-none opacity-50" : ""}`}
+          >
+            {product.stock === 0 ? "Out of stock" : "Order on WhatsApp"}
+          </a>
+          <a href={`tel:${SHOP_PHONE}`} className="btn-outline mt-3 w-full py-3 text-base">Call {SHOP_PHONE}</a>
+          <p className="mt-4 rounded-xl bg-navy-panel2 p-4 text-sm leading-relaxed text-ink-dim">
+            Online payment is not switched on yet. Send us a message and we will confirm the price, how to pay, and
+            whether you would like delivery to your town or to collect from our shop.
+          </p>
+        </div>
+        )}
 
         <ul className="mt-6 grid gap-2.5 text-sm text-ink-dim">
           <li className="flex items-center gap-2.5">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 text-mint" aria-hidden="true"><path d="M12 3l8 3v6c0 4.5-3.4 8-8 9-4.6-1-8-4.5-8-9V6l8-3z" /><path d="M8.5 12l2.5 2.5 4.5-5" /></svg>
-            Pay securely by card, bank transfer or USSD
+            {onlinePayments ? "Pay securely by card, bank transfer or USSD" : "We confirm the price and how to pay by phone or WhatsApp"}
           </li>
           <li className="flex items-center gap-2.5">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 text-mint" aria-hidden="true"><path d="M3 7h11v9H3z" /><path d="M14 10h4l3 3v3h-7z" /><circle cx="7" cy="18" r="1.8" /><circle cx="17" cy="18" r="1.8" /></svg>
-            {collecting ? "Collect it from our shop once payment is confirmed" : "Delivered to the town you choose above"}
+            {!onlinePayments ? "Delivery to your town, or collect from our shop" : collecting ? "Collect it from our shop once payment is confirmed" : "Delivered to the town you choose above"}
           </li>
-          <li className="flex items-center gap-2.5">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 text-mint" aria-hidden="true"><path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2z" /></svg>
-            Questions? <a href="tel:08035142589" className="text-gold-bright hover:underline">Call 08035142589</a> or{" "}
-            <a href="https://wa.me/2348035142589" target="_blank" rel="noopener noreferrer" className="text-gold-bright hover:underline">WhatsApp us</a>
-          </li>
+          {onlinePayments && (
+            <li className="flex items-center gap-2.5">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 text-mint" aria-hidden="true"><path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2z" /></svg>
+              Questions? <a href="tel:08035142589" className="text-gold-bright hover:underline">Call 08035142589</a> or{" "}
+              <a href="https://wa.me/2348035142589" target="_blank" rel="noopener noreferrer" className="text-gold-bright hover:underline">WhatsApp us</a>
+            </li>
+          )}
         </ul>
         </div>
       </div>

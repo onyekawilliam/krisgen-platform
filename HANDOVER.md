@@ -52,6 +52,9 @@ settings pages.
   payments work.
 - [ ] **Live keys.** Put the live secret key in Render (`FLW_SECRET_KEY`) and the live public key in Vercel
   (`VITE_FLW_PUBLIC_KEY`), then redeploy both.
+  Until `VITE_FLW_PUBLIC_KEY` is set, the shop shows **Order on WhatsApp** and **Call** buttons instead of Buy now
+  (number is in `frontend/src/config.js`). Once the key is set and Vercel redeploys, it switches to normal online
+  checkout by itself.
 - [ ] **Payment webhook.** Invent a long random string. Put it in Render as `FLW_SECRET_HASH` and enter the same
   string as the "Secret hash" in Flutterwave, with the URL
   `https://krisgen-api.onrender.com/api/webhooks/flutterwave`. This makes sure a customer who pays and then closes
