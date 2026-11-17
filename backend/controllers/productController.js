@@ -21,6 +21,9 @@ function validateProductChanges(body) {
   if (Object.hasOwn(body, "commissionRateOverride") && body.commissionRateOverride !== null && !validRate(body.commissionRateOverride)) {
     throw new ApiError(400, "Commission percentage must be between 0 and 100, or null to use the default");
   }
+  if (Object.hasOwn(body, "isActive") && typeof body.isActive !== "boolean") {
+    throw new ApiError(400, "isActive must be true or false");
+  }
   if (Object.hasOwn(body, "images")) {
     const images = body.images;
     if (!Array.isArray(images) || images.length > MAX_PHOTOS ||

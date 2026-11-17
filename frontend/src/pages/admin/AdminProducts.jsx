@@ -17,6 +17,7 @@ export default function AdminProducts() {
   const [photos, setPhotos] = useState([]); // photos already saved on the phone being edited
   const [queued, setQueued] = useState([]); // photos chosen for a new phone, uploaded after it is saved
   const [saving, setSaving] = useState(false);
+  const [listError, setListError] = useState("");
 
   function load() {
     api.get("/products/admin/all").then((res) => setProducts(res.data.data));
@@ -92,9 +93,16 @@ export default function AdminProducts() {
     }
   }
 
-  async function handleDeactivate(id) {
-    await api.delete(`/products/admin/${id}`);
-    load();
+  // Hides a phone from the shop, or shows it again. Nothing is deleted either way.
+  async function toggleActive(p) {
+    setListError("");
+    try {
+      if (p.isActive === false) await api.patch(`/products/admin/${p._id}`, { isActive: true });
+      else await api.delete(`/products/admin/${p._id}`);
+      await load();
+    } catch (err) {
+      setListError(err.response?.data?.message || "Could not change this phone. Please try again.");
+    }
   }
 
   return (
@@ -144,6 +152,7 @@ export default function AdminProducts() {
         </form>
       )}
 
+      {listError && <p role="alert" className="mb-3 text-sm text-coral">{listError}</p>}
       <div className="overflow-x-auto">
       <table className="w-full min-w-[850px] text-sm">
         <thead>
@@ -161,7 +170,7 @@ export default function AdminProducts() {
         </thead>
         <tbody>
           {products.map((p) => (
-            <tr key={p._id} className="border-b border-navy-line">
+            <tr key={p._id} className={`border-b border-navy-line ${p.isActive === false ? "bg-navy-panel2/60" : ""}`}>
               <td className="py-2.5 text-ink">{p.brand}</td>
               <td className="py-2.5">
                 <div className="relative h-12 w-12">
@@ -171,7 +180,10 @@ export default function AdminProducts() {
                   )}
                 </div>
               </td>
-              <td className="py-2.5 text-ink">{p.name}</td>
+              <td className="py-2.5 text-ink">
+                <span className={p.isActive === false ? "text-ink-dim" : ""}>{p.name}</span>
+                {p.isActive === false && <span className="badge badge-muted ml-2">Hidden from shop</span>}
+              </td>
               <td className="py-2.5 text-ink-dim">{naira(p.costPrice)}</td>
               <td className="py-2.5 text-ink-dim">{naira(p.sellingPrice)}</td>
               <td className="py-2.5 text-teal">{naira(p.sellingPrice - p.costPrice)}</td>
@@ -179,7 +191,14 @@ export default function AdminProducts() {
               <td className="py-2.5 text-ink-dim">{p.stock}</td>
               <td className="py-2.5">
                 <button onClick={() => startEdit(p)} className="text-xs border border-navy-line rounded-lg px-3 py-1.5 transition-colors mr-1.5 hover:border-gold">Edit</button>
-                <button onClick={() => handleDeactivate(p._id)} className="text-xs border border-navy-line rounded-lg px-3 py-1.5 transition-colors hover:border-coral hover:text-coral">Deactivate</button>
+                <button
+                  onClick={() => toggleActive(p)}
+                  className={`text-xs border border-navy-line rounded-lg px-3 py-1.5 transition-colors ${
+                    p.isActive === false ? "hover:border-mint hover:text-mint" : "hover:border-coral hover:text-coral"
+                  }`}
+                >
+                  {p.isActive === false ? "Activate" : "Deactivate"}
+                </button>
               </td>
             </tr>
           ))}
