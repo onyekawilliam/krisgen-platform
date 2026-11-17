@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import api from "../../api/axios";
 import ProductCard from "../../components/ProductCard";
+import { onlinePayments } from "../../config";
 
 const brands = ["Tecno", "Infinix", "Itel", "Viva", "Samsung", "Redmi", "Realme"];
 
@@ -12,8 +13,8 @@ const perks = [
     icon: <><path d="M12 3l8 3v6c0 4.5-3.4 8-8 9-4.6-1-8-4.5-8-9V6l8-3z" /><path d="M8.5 12l2.5 2.5 4.5-5" /></>,
   },
   {
-    title: "Pay your way",
-    text: "Card, bank transfer or USSD, confirmed straight away.",
+    title: onlinePayments ? "Pay your way" : "Order by WhatsApp",
+    text: onlinePayments ? "Card, bank transfer or USSD, confirmed straight away." : "Message or call us and we confirm everything with you.",
     icon: <><rect x="2" y="5" width="20" height="14" rx="3" /><path d="M2 10h20" /></>,
   },
   {
@@ -30,7 +31,9 @@ const perks = [
 
 const steps = [
   { n: "01", title: "Pick your phone", text: "Browse by brand or search for a model, and check the price and stock." },
-  { n: "02", title: "Pay securely", text: "Pay by card, bank transfer or USSD. We confirm your payment before we ship." },
+  onlinePayments
+    ? { n: "02", title: "Pay securely", text: "Pay by card, bank transfer or USSD. We confirm your payment before we ship." }
+    : { n: "02", title: "We confirm and you pay", text: "We confirm the price with you and tell you how to pay. We check your payment before we hand it over." },
   { n: "03", title: "Get your phone", text: "We deliver it to your town, or you collect it from our shop." },
 ];
 
@@ -79,7 +82,7 @@ export default function Home() {
                   How referrals work
                 </Link>
               </div>
-              <p className="mt-5 text-sm text-brand-dim">Pay by card, bank transfer or USSD.</p>
+              <p className="mt-5 text-sm text-brand-dim">{onlinePayments ? "Pay by card, bank transfer or USSD." : "Order by call or WhatsApp on 08035142589."}</p>
             </div>
 
             <div aria-hidden="true" className="relative mx-auto h-64 w-full max-w-sm md:h-[22rem]">

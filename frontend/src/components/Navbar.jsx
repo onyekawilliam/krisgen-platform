@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link, NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import ThemeToggle from "./ThemeToggle";
+import { onlinePayments } from "../config";
 
 const links = [
   { to: "/shop", label: "Phones" },
@@ -73,8 +74,10 @@ export default function Navbar() {
     <>
       <div className="bg-brand text-xs text-brand-dim">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-5 py-2">
-          <span className="hidden sm:inline">Genuine phones at dealer prices · Pay by card, bank transfer or USSD</span>
-          <span className="sm:hidden">Pay by card, transfer or USSD</span>
+          <span className="hidden sm:inline">
+            {onlinePayments ? "Genuine phones at dealer prices · Pay by card, bank transfer or USSD" : "Genuine phones at dealer prices · Order by call or WhatsApp"}
+          </span>
+          <span className="sm:hidden">{onlinePayments ? "Pay by card, transfer or USSD" : "Order by call or WhatsApp"}</span>
           <a href="tel:08035142589" className="whitespace-nowrap font-medium text-brand-text hover:text-gold">
             Call or WhatsApp 08035142589
           </a>
