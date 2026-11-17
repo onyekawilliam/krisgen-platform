@@ -22,6 +22,8 @@ export default function ProductDetails() {
   const [pendingOrder, setPendingOrder] = useState(null);
   const [loadError, setLoadError] = useState("");
   const [address, setAddress] = useState({ fullName: "", phone: "", address: "", city: "", state: "" });
+  const [fulfillment, setFulfillment] = useState("delivery");
+  const [pickup, setPickup] = useState(null);
 
   useEffect(() => {
     setLoadError("");
@@ -36,6 +38,14 @@ export default function ProductDetails() {
         )
       );
   }, [id]);
+
+  // Whether the shop offers pickup, and where. If this cannot load, only delivery is offered.
+  useEffect(() => {
+    api.get("/store/pickup").then((res) => setPickup(res.data.data)).catch(() => setPickup(null));
+  }, []);
+
+  const pickupAvailable = Boolean(pickup?.enabled);
+  const collecting = fulfillment === "pickup" && pickupAvailable;
 
   // Pre-fill the delivery form from the account, once, without overwriting edits.
   useEffect(() => {
@@ -114,10 +124,17 @@ async function handleBuy() {
     });
   }
 
-  const missing = Object.entries(address).find(([, value]) => !value.trim());
-  if (missing) {
-    setError("Enter your full delivery address so we can deliver your phone.");
-    return;
+  if (collecting) {
+    if (!address.fullName.trim() || !address.phone.trim()) {
+      setError("Enter your name and phone number so we can tell you when your phone is ready.");
+      return;
+    }
+  } else {
+    const missing = Object.entries(address).find(([, value]) => !value.trim());
+    if (missing) {
+      setError("Enter your full delivery address so we can deliver your phone.");
+      return;
+    }
   }
 
   setPlacing(true);
@@ -127,7 +144,8 @@ async function handleBuy() {
     // 1. Create the order first
     const res = await api.post("/orders", {
       items: [{ productId: id, quantity: qty }],
-      shippingAddress: address,
+      fulfillment: collecting ? "pickup" : "delivery",
+      shippingAddress: collecting ? { fullName: address.fullName, phone: address.phone } : address,
     });
 
     const order = res.data.data;
@@ -191,11 +209,40 @@ async function handleBuy() {
           <span className={`badge ${product.stock > 0 ? "badge-ok" : "badge-muted"}`}>{product.stock > 0 ? `${product.stock} in stock` : "Out of stock"}</span>
         </div>
 
+        {pickupAvailable && (
+          <div className="mt-6" role="radiogroup" aria-label="How would you like to get your phone?">
+            <p className="label">How would you like to get it?</p>
+            <div className="grid grid-cols-2 gap-3">
+              {[
+                { value: "delivery", title: "Delivery", text: "To your address" },
+                { value: "pickup", title: "Shop pickup", text: "Collect it yourself" },
+              ].map((option) => {
+                const active = fulfillment === option.value;
+                return (
+                  <button
+                    key={option.value}
+                    type="button"
+                    role="radio"
+                    aria-checked={active}
+                    onClick={() => setFulfillment(option.value)}
+                    className={`rounded-xl border px-4 py-3 text-left transition ${
+                      active ? "border-gold bg-gold/10 ring-2 ring-gold/30" : "border-navy-line bg-navy-panel hover:border-ink-faint"
+                    }`}
+                  >
+                    <span className="block text-sm font-semibold">{option.title}</span>
+                    <span className="block text-xs text-ink-dim">{option.text}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
         <fieldset className="mt-6 rounded-xl border border-navy-line bg-navy-deep/60 p-4">
-          <legend className="px-2 font-display text-sm font-semibold">Delivery details</legend>
+          <legend className="px-2 font-display text-sm font-semibold">{collecting ? "Your details" : "Delivery details"}</legend>
           <div className="grid grid-cols-2 gap-3">
             <div className="col-span-2">
-              <label className="label" htmlFor="ship-name">Recipient name</label>
+              <label className="label" htmlFor="ship-name">{collecting ? "Your name" : "Recipient name"}</label>
               <input id="ship-name" className="input" autoComplete="name" maxLength={100} value={address.fullName}
                 onChange={(e) => setAddress({ ...address, fullName: e.target.value })} />
             </div>
@@ -204,6 +251,8 @@ async function handleBuy() {
               <input id="ship-phone" className="input" autoComplete="tel" maxLength={40} value={address.phone}
                 onChange={(e) => setAddress({ ...address, phone: e.target.value })} />
             </div>
+            {!collecting && (
+              <>
             <div className="col-span-2">
               <label className="label" htmlFor="ship-address">Street address</label>
               <input id="ship-address" className="input" autoComplete="street-address" maxLength={250} value={address.address}
@@ -219,6 +268,17 @@ async function handleBuy() {
               <input id="ship-state" className="input" autoComplete="address-level1" maxLength={100} value={address.state}
                 onChange={(e) => setAddress({ ...address, state: e.target.value })} />
             </div>
+              </>
+            )}
+            {collecting && (
+              <div className="col-span-2 rounded-xl bg-navy-panel2 p-4 text-sm">
+                <div className="font-semibold">Collect from our shop</div>
+                <p className="mt-1 leading-relaxed text-ink-dim">
+                  {pickup?.address || "We will confirm the shop address and a pickup time with you by phone or WhatsApp once your payment is confirmed."}
+                </p>
+                {pickup?.instructions && <p className="mt-1.5 leading-relaxed text-ink-dim">{pickup.instructions}</p>}
+              </div>
+            )}
           </div>
         </fieldset>
 
@@ -235,7 +295,7 @@ async function handleBuy() {
           </li>
           <li className="flex items-center gap-2.5">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 text-mint" aria-hidden="true"><path d="M3 7h11v9H3z" /><path d="M14 10h4l3 3v3h-7z" /><circle cx="7" cy="18" r="1.8" /><circle cx="17" cy="18" r="1.8" /></svg>
-            Delivered to the address you enter above
+            {collecting ? "Collect it from our shop once payment is confirmed" : "Delivered to the address you enter above"}
           </li>
           <li className="flex items-center gap-2.5">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 text-mint" aria-hidden="true"><path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2z" /></svg>

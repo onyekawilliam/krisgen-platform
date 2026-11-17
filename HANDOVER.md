@@ -73,6 +73,10 @@ settings pages.
 - **Add or change a phone:** Admin → Products. Selling price must be above cost price. Cost price is private to you.
 - **Process an order:** Admin → Orders. A paid order shows the customer's delivery address. Mark it
   **processing**, then **delivered**.
+- **Shop pickup:** customers can choose to collect instead of having it delivered. Set your shop address and
+  opening hours in Admin → Settings → Shop pickup (switch it off there if you cannot offer it). A pickup order is
+  labelled **Shop pickup** with the customer's name and phone. Use **Mark ready for pickup** when it is waiting for
+  them, and **Mark collected** once they have it. Phone or WhatsApp them to say it is ready.
 - **Cancel or refund a paid order:** use Cancel in Admin → Orders, then **send the money back yourself in the
   Flutterwave dashboard**. The site does not refund automatically. Cancelling also cancels the referral commissions
   on that order.

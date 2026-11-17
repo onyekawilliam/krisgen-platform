@@ -8,6 +8,11 @@ const settingsSchema = new mongoose.Schema({
     set: strictNumber("directCommissionRate"), validate: { validator: validRate, message: "Direct commission rate must be between 0 and 100" } },
   referralOverrideRate: { type: Number, default: 5, required: true,
     set: strictNumber("referralOverrideRate"), validate: { validator: validRate, message: "Referral override rate must be between 0 and 100" } },
+  // Shop pickup: whether customers can collect instead of waiting for delivery,
+  // where, and any instructions (opening hours, what to bring).
+  pickupEnabled: { type: Boolean, default: true },
+  pickupAddress: { type: String, default: "", trim: true, maxlength: 300 },
+  pickupInstructions: { type: String, default: "", trim: true, maxlength: 300 },
 }, { timestamps: true });
 
 guardNumericUpdates(settingsSchema, {

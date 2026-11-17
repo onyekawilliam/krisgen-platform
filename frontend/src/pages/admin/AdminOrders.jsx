@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import api from "../../api/axios";
-import StatusBadge from "../../components/StatusBadge";
+import StatusBadge, { orderStatusLabel } from "../../components/StatusBadge";
 
 function naira(n) {
   return "₦" + Number(n).toLocaleString("en-NG");
@@ -423,6 +423,12 @@ export default function AdminOrders() {
               <td className="py-2.5 text-ink font-mono">{o.orderNumber}</td>
               <td className="py-2.5 text-ink-dim">
                 <div>{o.buyer?.name || o.walkInCustomer?.name || "Unknown customer"}</div>
+                {o.fulfillment === "pickup" && (
+                  <div className="mt-1 text-xs text-ink-faint">
+                    <span className="badge badge-ok mr-1.5">Shop pickup</span>
+                    {o.shippingAddress?.fullName} · {o.shippingAddress?.phone}
+                  </div>
+                )}
                 {o.shippingAddress?.address && (
                   <div className="text-xs text-ink-faint mt-0.5">
                     Deliver to {o.shippingAddress.fullName}, {o.shippingAddress.address}, {o.shippingAddress.city},{" "}
@@ -438,13 +444,13 @@ export default function AdminOrders() {
                 ))}
               </td>
               <td className="py-2.5 text-ink-dim">{naira(o.totalAmount)}</td>
-              <td className="py-2.5"><StatusBadge status={o.status} /></td>
+              <td className="py-2.5"><StatusBadge status={o.status} label={orderStatusLabel(o)} /></td>
               <td className="py-2.5">
                 {o.status === "paid" && (
-                  <button onClick={() => updateStatus(o._id, "processing")} className="text-xs border border-navy-line rounded-lg px-3 py-1.5 transition-colors mr-1.5 hover:border-gold">Mark processing</button>
+                  <button onClick={() => updateStatus(o._id, "processing")} className="text-xs border border-navy-line rounded-lg px-3 py-1.5 transition-colors mr-1.5 hover:border-gold">{o.fulfillment === "pickup" ? "Mark ready for pickup" : "Mark processing"}</button>
                 )}
                 {o.status === "processing" && (
-                  <button onClick={() => updateStatus(o._id, "delivered")} className="text-xs border border-navy-line rounded-lg px-3 py-1.5 transition-colors mr-1.5 hover:border-teal">Mark delivered</button>
+                  <button onClick={() => updateStatus(o._id, "delivered")} className="text-xs border border-navy-line rounded-lg px-3 py-1.5 transition-colors mr-1.5 hover:border-teal">{o.fulfillment === "pickup" ? "Mark collected" : "Mark delivered"}</button>
                 )}
                 {["paid", "processing"].includes(o.status) && (
                   <button onClick={() => window.confirm("Cancel this paid order? Its commissions are cancelled too, and any refund must be sent by you in Flutterwave.") && updateStatus(o._id, "cancelled")} className="text-xs border border-navy-line rounded-lg px-3 py-1.5 transition-colors hover:border-coral hover:text-coral">Cancel</button>

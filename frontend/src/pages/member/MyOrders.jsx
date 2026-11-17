@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useFlutterwave, closePaymentModal } from "flutterwave-react-v3";
 import api from "../../api/axios";
 import { useAuth } from "../../context/AuthContext";
-import StatusBadge from "../../components/StatusBadge";
+import StatusBadge, { orderStatusLabel } from "../../components/StatusBadge";
 
 
 function naira(n) {
@@ -17,6 +17,7 @@ export default function MyOrders() {
   const [loadingId, setLoadingId] = useState(null);
   const [error, setError] = useState("");
   const verifyingPayment = useRef(false);
+  const [pickup, setPickup] = useState(null);
 
   const handleFlutterPayment = useFlutterwave({
     public_key: import.meta.env.VITE_FLW_PUBLIC_KEY,
@@ -38,6 +39,7 @@ export default function MyOrders() {
 
   useEffect(() => {
     api.get("/orders/mine").then((res) => setOrders(res.data.data));
+    api.get("/store/pickup").then((res) => setPickup(res.data.data)).catch(() => {});
   }, []);
 
   async function continuePayment(order) {
@@ -152,8 +154,14 @@ export default function MyOrders() {
             <div key={o._id} className="card">
               <div className="flex justify-between items-center mb-2">
                 <span className="font-mono text-sm text-ink-dim">{o.orderNumber}</span>
-                <StatusBadge status={o.status} label={o.status === "payment_review" ? "Payment received — awaiting admin review" : undefined} />
+                <StatusBadge status={o.status} label={o.status === "payment_review" ? "Payment received — awaiting admin review" : orderStatusLabel(o)} />
               </div>
+              {o.fulfillment === "pickup" && (
+                <p className="mb-2 text-xs text-ink-dim">
+                  <span className="badge badge-ok mr-1.5">Shop pickup</span>
+                  {pickup?.address || "We will confirm the shop address and pickup time with you."}
+                </p>
+              )}
               {o.items.map((item, i) => (
                 <div key={i} className="text-sm text-ink flex justify-between">
                   <span>{item.name} × {item.quantity}</span>

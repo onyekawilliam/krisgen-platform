@@ -36,6 +36,14 @@ const orderSchema = new mongoose.Schema(
       default: "online",
     },
 
+    // How an online customer gets the phone: delivered to an address, or
+    // collected from the shop. Orders made before this existed are deliveries.
+    fulfillment: {
+      type: String,
+      enum: ["delivery", "pickup"],
+      default: "delivery",
+    },
+
     walkInCustomer: {
       name: String,
       phone: String,

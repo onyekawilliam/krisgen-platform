@@ -14,6 +14,14 @@ const toneFor = {
   cancelled: "bad", refunded: "bad", reversed: "bad", rejected: "bad", suspended: "bad",
 };
 
+// A pickup order is collected, not delivered, so its two late statuses read differently.
+export function orderStatusLabel(order) {
+  if (order?.fulfillment !== "pickup") return undefined;
+  if (order.status === "processing") return "Ready for pickup";
+  if (order.status === "delivered") return "Collected";
+  return undefined;
+}
+
 export default function StatusBadge({ status, label }) {
   const tone = tones[toneFor[status]] || "bg-navy-panel2 text-ink-dim";
   return (

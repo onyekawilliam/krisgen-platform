@@ -19,6 +19,7 @@ const referralRoutes = require("./routes/referralRoutes");
 const withdrawalRoutes = require("./routes/withdrawalRoutes");
 const adminRoutes = require("./routes/adminRoutes");
 const webhookRoutes = require("./routes/webhookRoutes");
+const storeRoutes = require("./routes/storeRoutes");
 
 function validateProductionConfig() {
   if (process.env.NODE_ENV !== "production") return;
@@ -81,6 +82,7 @@ app.use("/api/referrals", referralRoutes);
 app.use("/api/withdrawals", withdrawalRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/webhooks", webhookRoutes);
+app.use("/api/store", storeRoutes);
 
 app.use((req, res) => res.status(404).json({ success: false, message: "Route not found" }));
 app.use(errorHandler);

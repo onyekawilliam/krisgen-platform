@@ -38,20 +38,20 @@ export default function Register() {
 
       <form onSubmit={handleSubmit} className="flex flex-col gap-3">
         <div>
-          <label className="label">Full name</label>
-          <input className="input" required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+          <label className="label" htmlFor="reg-name">Full name</label>
+          <input id="reg-name" autoComplete="name" className="input" required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
         </div>
         <div>
-          <label className="label">Email</label>
-          <input type="email" className="input" required value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
+          <label className="label" htmlFor="reg-email">Email</label>
+          <input id="reg-email" autoComplete="email" type="email" className="input" required value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
         </div>
         <div>
-          <label className="label">Phone number</label>
-          <input className="input" required value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
+          <label className="label" htmlFor="reg-phone">Phone number</label>
+          <input id="reg-phone" autoComplete="tel" className="input" required value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
         </div>
         <div>
-          <label className="label">Password</label>
-          <PasswordInput autoComplete="new-password" required minLength={8} value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} />
+          <label className="label" htmlFor="reg-password">Password</label>
+          <PasswordInput id="reg-password" autoComplete="new-password" required minLength={8} value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} />
         </div>
 
         {error && <p className="text-coral text-sm">{error}</p>}

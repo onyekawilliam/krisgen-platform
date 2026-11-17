@@ -9,6 +9,7 @@ const asyncHandler = require("../utils/asyncHandler");
 const { verifyOrderPayment } = require("../services/onlinePaymentService");
 const { minorUnits } = require("../utils/paymentMoney");
 const { reverseCommissionsForOrder } = require("../services/commissionService");
+const Settings = require("../models/Settings");
 const { requireString, queryString } = require("../utils/inputGuards");
 
 function validShippingAddress(address) {
@@ -24,13 +25,34 @@ function validShippingAddress(address) {
   };
 }
 
+// Someone collecting from the shop only needs a name and a phone number so we
+// can tell them when it is ready.
+function validPickupContact(contact) {
+  if (!contact || typeof contact !== "object" || Array.isArray(contact)) {
+    throw new ApiError(400, "Your name and phone number are required for pickup");
+  }
+  return {
+    fullName: requireString(contact.fullName, "Name", { max: 100 }),
+    phone: requireString(contact.phone, "Phone number", { max: 40, min: 7 }),
+  };
+}
+
 // Creates a pending order from selling-price snapshots taken server-side —
 // the frontend sends product IDs, quantities and a delivery address, never
 // prices. The seller who earns the commission is the buyer's own referrer
 // (soldBy = buyer.referredBy); a buyer nobody referred earns nobody a commission.
 exports.createOrder = asyncHandler(async (req, res) => {
   const { items } = req.body;
-  const shippingAddress = validShippingAddress(req.body.shippingAddress);
+  const fulfillment = req.body.fulfillment === undefined ? "delivery" : req.body.fulfillment;
+  if (!["delivery", "pickup"].includes(fulfillment)) {
+    throw new ApiError(400, "Choose delivery or shop pickup");
+  }
+  if (fulfillment === "pickup" && (await Settings.getSettings()).pickupEnabled === false) {
+    throw new ApiError(400, "Shop pickup is not available right now. Please choose delivery.");
+  }
+  const shippingAddress = fulfillment === "pickup"
+    ? validPickupContact(req.body.shippingAddress)
+    : validShippingAddress(req.body.shippingAddress);
   if (!Array.isArray(items) || items.length === 0 || items.length > 100) {
     throw new ApiError(400, "Order must contain 1 to 100 items");
   }
@@ -65,11 +87,11 @@ exports.createOrder = asyncHandler(async (req, res) => {
   const order = await Order.create({
     orderNumber: `KRG-${Date.now()}-${crypto.randomBytes(6).toString("hex").toUpperCase()}`,
     buyer: req.user._id, soldBy: buyer?.referredBy || null, items: orderItems,
-    totalAmount: totalMinor / 100, shippingAddress, status: "pending_payment",
+    totalAmount: totalMinor / 100, fulfillment, shippingAddress, status: "pending_payment",
     payment: { provider: "flutterwave", currency: "NGN", expectedReferences: [paymentReference] },
   });
   res.status(201).json({ success: true, data: {
-    orderId: order._id, orderNumber: order.orderNumber, totalAmount: order.totalAmount,
+    orderId: order._id, orderNumber: order.orderNumber, totalAmount: order.totalAmount, fulfillment,
     paymentReference, currency: "NGN",
   } });
 });

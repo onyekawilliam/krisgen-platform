@@ -34,12 +34,12 @@ export default function Login() {
 
       <form onSubmit={handleSubmit} className="flex flex-col gap-3">
         <div>
-          <label className="label">Email</label>
-          <input type="email" className="input" required value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
+          <label className="label" htmlFor="login-email">Email</label>
+          <input id="login-email" autoComplete="email" type="email" className="input" required value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
         </div>
         <div>
-          <label className="label">Password</label>
-          <PasswordInput autoComplete="current-password" required value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} />
+          <label className="label" htmlFor="login-password">Password</label>
+          <PasswordInput id="login-password" autoComplete="current-password" required value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} />
           <Link to="/forgot-password" className="text-teal text-xs mt-1.5 inline-block">Forgot your password?</Link>
         </div>
 

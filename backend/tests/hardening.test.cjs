@@ -40,6 +40,7 @@ before(async () => {
   app.use("/api/withdrawals", require("../routes/withdrawalRoutes"));
   app.use("/api/commissions", require("../routes/commissionRoutes"));
   app.use("/api/admin", require("../routes/adminRoutes"));
+  app.use("/api/store", require("../routes/storeRoutes"));
   app.use(errorHandler);
   server = app.listen(0);
   baseUrl = `http://127.0.0.1:${server.address().port}`;
@@ -325,6 +326,88 @@ test("admin member search treats the text literally", async () => {
   const found = await request("GET", "/api/admin/members?search=alice", undefined, admin);
   assert.equal(found.body.data.length, 1);
   assert.equal((await request("GET", "/api/admin/members?search[$ne]=x", undefined, admin)).status, 200);
+});
+
+// ----- shop pickup -----
+
+const pickupItems = () => [{ productId: String(product._id), quantity: 1 }];
+const fullAddress = { fullName: "A Buyer", phone: "08011112222", address: "1 St", city: "Ikeja", state: "Lagos" };
+
+test("a customer can choose shop pickup with only a name and phone number", async () => {
+  const created = await request("POST", "/api/orders", {
+    items: pickupItems(), fulfillment: "pickup", shippingAddress: { fullName: " Ada Obi ", phone: "08011112222" },
+  }, alice);
+  assert.equal(created.status, 201, JSON.stringify(created.body));
+  assert.equal(created.body.data.fulfillment, "pickup");
+  const order = await Order.findById(created.body.data.orderId);
+  assert.equal(order.fulfillment, "pickup");
+  assert.equal(order.shippingAddress.fullName, "Ada Obi");
+  assert.equal(order.shippingAddress.phone, "08011112222");
+  assert.equal(order.shippingAddress.address, undefined, "no street address is stored for a pickup");
+  assert.equal(order.status, "pending_payment");
+});
+
+test("pickup still needs a real name and phone, and delivery still needs a full address", async () => {
+  for (const shippingAddress of [undefined, {}, [], "x", { fullName: "A" }, { phone: "08011112222" },
+    { fullName: { $ne: 1 }, phone: "08011112222" }, { fullName: "A", phone: "123" }]) {
+    const response = await request("POST", "/api/orders", { items: pickupItems(), fulfillment: "pickup", shippingAddress }, alice);
+    assert.equal(response.status, 400, "pickup " + JSON.stringify(shippingAddress));
+  }
+  const partial = { fullName: "A Buyer", phone: "08011112222" };
+  assert.equal((await request("POST", "/api/orders", { items: pickupItems(), fulfillment: "delivery", shippingAddress: partial }, alice)).status, 400);
+  assert.equal((await request("POST", "/api/orders", { items: pickupItems(), shippingAddress: partial }, alice)).status, 400);
+  assert.equal(await Order.countDocuments(), 0);
+});
+
+test("leaving out the choice means delivery, and anything unknown is refused", async () => {
+  const plain = await request("POST", "/api/orders", { items: pickupItems(), shippingAddress: fullAddress }, alice);
+  assert.equal(plain.status, 201);
+  assert.equal((await Order.findById(plain.body.data.orderId)).fulfillment, "delivery");
+  for (const fulfillment of ["teleport", "", 5, null, {}, ["pickup"], "PICKUP"]) {
+    const response = await request("POST", "/api/orders", { items: pickupItems(), fulfillment, shippingAddress: fullAddress }, alice);
+    assert.equal(response.status, 400, JSON.stringify(fulfillment));
+  }
+});
+
+test("the shop's pickup details are public, editable by an admin only, and can switch pickup off", async () => {
+  const defaults = await request("GET", "/api/store/pickup");
+  assert.equal(defaults.status, 200);
+  assert.deepEqual(defaults.body.data, { enabled: true, address: "", instructions: "" });
+
+  const settingsPath = "/api/commissions/admin/settings";
+  const body = { pickupAddress: "  12 Market Road, Lagos  ", pickupInstructions: "Open 9am to 6pm. Bring your order number." };
+  assert.ok([401, 403].includes((await request("PATCH", settingsPath, body, alice)).status), "customers cannot edit it");
+  assert.equal((await request("PATCH", settingsPath, body)).status, 401);
+  assert.equal((await request("PATCH", settingsPath, body, admin)).status, 200);
+  const saved = await request("GET", "/api/store/pickup");
+  assert.equal(saved.body.data.address, "12 Market Road, Lagos");
+  assert.equal(saved.body.data.instructions, "Open 9am to 6pm. Bring your order number.");
+  assert.deepEqual(Object.keys(saved.body.data).sort(), ["address", "enabled", "instructions"]);
+
+  assert.equal((await request("PATCH", settingsPath, { pickupEnabled: false }, admin)).status, 200);
+  assert.equal((await request("GET", "/api/store/pickup")).body.data.enabled, false);
+  const refused = await request("POST", "/api/orders", {
+    items: pickupItems(), fulfillment: "pickup", shippingAddress: { fullName: "A", phone: "08011112222" },
+  }, alice);
+  assert.equal(refused.status, 400);
+  assert.match(refused.body.message, /pickup is not available/i);
+  assert.equal((await request("POST", "/api/orders", { items: pickupItems(), shippingAddress: fullAddress }, alice)).status, 201, "delivery still works");
+  assert.equal((await request("PATCH", settingsPath, { pickupEnabled: true }, admin)).status, 200);
+});
+
+test("pickup settings are validated and the commission rates are untouched by them", async () => {
+  await Settings.create({ directCommissionRate: 15, referralOverrideRate: 5 });
+  const settingsPath = "/api/commissions/admin/settings";
+  for (const bad of [{ pickupEnabled: "yes" }, { pickupEnabled: 1 }, { pickupAddress: 5 }, { pickupAddress: { a: 1 } },
+    { pickupInstructions: ["x"] }, { pickupAddress: "x".repeat(301) }, { pickupAddress: "ok", somethingElse: 1 }]) {
+    assert.equal((await request("PATCH", settingsPath, bad, admin)).status, 400, JSON.stringify(bad).slice(0, 60));
+  }
+  assert.equal((await request("PATCH", settingsPath, { pickupAddress: "ok", directCommissionRate: 20 }, admin)).status, 200);
+  const stored = await Settings.getSettings();
+  assert.equal(stored.directCommissionRate, 20);
+  assert.equal(stored.referralOverrideRate, 5);
+  assert.equal(stored.pickupAddress, "ok");
+  assert.equal((await request("PATCH", settingsPath, { directCommissionRate: 99 }, admin)).status, 400, "the 100% rule still applies");
 });
 
 // ----- checkout and cross-site writes -----
