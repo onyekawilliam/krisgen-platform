@@ -103,13 +103,26 @@ exports.adminGetSettings = asyncHandler(async (req, res) => {
   res.json({ success: true, data: settings });
 });
 
+const rateKeys = ["directCommissionRate", "referralOverrideRate"];
+const pickupKeys = ["pickupEnabled", "pickupAddress", "pickupInstructions"];
+
 exports.adminUpdateSettings = asyncHandler(async (req, res) => {
   if (!req.body || typeof req.body !== "object" || Array.isArray(req.body) ||
-      Object.keys(req.body).some(key => !["directCommissionRate", "referralOverrideRate"].includes(key))) {
-    throw new ApiError(400, "Only commission rate fields may be submitted");
+      Object.keys(req.body).some(key => ![...rateKeys, ...pickupKeys].includes(key))) {
+    throw new ApiError(400, "Only commission rates and shop pickup details may be submitted");
   }
-  for (const [key, value] of Object.entries(req.body)) {
-    if (!validRate(value)) throw new ApiError(400, key + " must be a finite number between 0 and 100");
+  for (const key of rateKeys) {
+    if (Object.hasOwn(req.body, key) && !validRate(req.body[key])) {
+      throw new ApiError(400, key + " must be a finite number between 0 and 100");
+    }
+  }
+  if (Object.hasOwn(req.body, "pickupEnabled") && typeof req.body.pickupEnabled !== "boolean") {
+    throw new ApiError(400, "pickupEnabled must be true or false");
+  }
+  for (const key of ["pickupAddress", "pickupInstructions"]) {
+    if (Object.hasOwn(req.body, key) && (typeof req.body[key] !== "string" || req.body[key].trim().length > 300)) {
+      throw new ApiError(400, key + " must be text of at most 300 characters");
+    }
   }
   const { directCommissionRate, referralOverrideRate } = req.body;
   const settings = await Settings.getSettings();
@@ -122,6 +135,9 @@ exports.adminUpdateSettings = asyncHandler(async (req, res) => {
   }
   if (directCommissionRate != null) settings.directCommissionRate = directCommissionRate;
   if (referralOverrideRate != null) settings.referralOverrideRate = referralOverrideRate;
+  for (const key of pickupKeys) {
+    if (Object.hasOwn(req.body, key)) settings[key] = typeof req.body[key] === "string" ? req.body[key].trim() : req.body[key];
+  }
 
   await settings.save();
   res.json({ success: true, data: settings });

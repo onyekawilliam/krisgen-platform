@@ -11,16 +11,16 @@ const tabs = [
 
 export default function MemberLayout() {
   return (
-    <div className="max-w-6xl mx-auto px-5 py-8 flex flex-col md:flex-row gap-8">
-      <nav className="flex md:flex-col gap-1 overflow-x-auto md:w-48 flex-shrink-0 border-b md:border-b-0 md:border-r border-navy-line pb-2 md:pb-0 md:pr-4">
+    <div className="mx-auto flex max-w-6xl flex-col gap-8 px-5 py-8 md:flex-row md:gap-10">
+      <nav aria-label="Dashboard" className="no-scrollbar flex flex-shrink-0 gap-1 overflow-x-auto border-b border-navy-line pb-3 md:w-52 md:flex-col md:border-b-0 md:border-r md:pb-0 md:pr-5">
         {tabs.map((t) => (
           <NavLink
             key={t.to}
             to={t.to}
             end={t.end}
             className={({ isActive }) =>
-              `whitespace-nowrap text-sm px-3 py-2 rounded-md ${
-                isActive ? "bg-navy-panel text-gold-bright font-medium" : "text-ink-dim hover:text-ink"
+              `whitespace-nowrap rounded-xl px-3.5 py-2.5 text-sm transition-colors ${
+                isActive ? "bg-navy-panel font-medium text-gold-bright" : "text-ink-dim hover:bg-navy-panel/60 hover:text-ink"
               }`
             }
           >

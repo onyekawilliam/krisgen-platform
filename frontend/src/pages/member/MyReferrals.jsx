@@ -14,7 +14,7 @@ export default function MyReferrals() {
 
   return (
     <div>
-      <h1 className="font-display text-2xl font-bold mb-1">My referrals</h1>
+      <h1 className="page-title mb-1">My referrals</h1>
       <p className="text-ink-dim text-sm mb-6">Everyone who registered with your link. One level — no downline tree.</p>
 
       <div className="card mb-6">

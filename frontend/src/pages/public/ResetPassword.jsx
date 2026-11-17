@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link, useSearchParams, useNavigate } from "react-router-dom";
 import api from "../../api/axios";
 import PasswordInput from "../../components/PasswordInput";
+import AuthLayout from "../../components/AuthLayout";
 
 export default function ResetPassword() {
   const [params] = useSearchParams();
@@ -34,16 +35,16 @@ export default function ResetPassword() {
 
   if (!token) {
     return (
-      <div className="max-w-sm mx-auto px-5 py-16">
+      <AuthLayout>
         <h1 className="font-display text-2xl font-bold mb-3">Reset link not valid</h1>
         <p className="text-ink-dim text-sm mb-5">This link is missing its reset code. Request a new one and use the link in the email.</p>
         <Link to="/forgot-password" className="btn-primary">Request a new link</Link>
-      </div>
+      </AuthLayout>
     );
   }
 
   return (
-    <div className="max-w-sm mx-auto px-5 py-16">
+    <AuthLayout>
       <h1 className="font-display text-2xl font-bold mb-1">Choose a new password</h1>
       <p className="text-ink-dim text-sm mb-6">Use at least 8 characters. You'll be signed out everywhere else.</p>
 
@@ -74,6 +75,6 @@ export default function ResetPassword() {
           </button>
         </form>
       )}
-    </div>
+    </AuthLayout>
   );
 }

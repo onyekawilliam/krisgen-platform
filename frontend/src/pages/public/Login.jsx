@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate, useLocation, Link } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import PasswordInput from "../../components/PasswordInput";
+import AuthLayout from "../../components/AuthLayout";
 
 export default function Login() {
   const { login } = useAuth();
@@ -27,18 +28,18 @@ export default function Login() {
   }
 
   return (
-    <div className="max-w-sm mx-auto px-5 py-16">
+    <AuthLayout>
       <h1 className="font-display text-2xl font-bold mb-1">Log in</h1>
       <p className="text-ink-dim text-sm mb-6">Access your dashboard, referrals and orders.</p>
 
       <form onSubmit={handleSubmit} className="flex flex-col gap-3">
         <div>
-          <label className="label">Email</label>
-          <input type="email" className="input" required value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
+          <label className="label" htmlFor="login-email">Email</label>
+          <input id="login-email" autoComplete="email" type="email" className="input" required value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
         </div>
         <div>
-          <label className="label">Password</label>
-          <PasswordInput autoComplete="current-password" required value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} />
+          <label className="label" htmlFor="login-password">Password</label>
+          <PasswordInput id="login-password" autoComplete="current-password" required value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} />
           <Link to="/forgot-password" className="text-teal text-xs mt-1.5 inline-block">Forgot your password?</Link>
         </div>
 
@@ -52,6 +53,6 @@ export default function Login() {
       <p className="text-ink-dim text-sm mt-5">
         No account? <Link to="/register" className="text-teal">Register free</Link>
       </p>
-    </div>
+    </AuthLayout>
   );
 }

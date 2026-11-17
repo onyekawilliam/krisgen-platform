@@ -19,23 +19,23 @@ ${form.message.trim()}`;
   }
 
   return (
-    <div className="max-w-3xl mx-auto px-5 py-14 grid md:grid-cols-2 gap-10">
+    <div className="mx-auto grid max-w-4xl gap-10 px-5 py-14 md:grid-cols-2 md:gap-14">
       <div>
-        <p className="text-teal text-sm font-semibold mb-2">Contact</p>
-        <h1 className="font-display text-2xl font-bold mb-3">Talk to us</h1>
-        <p className="text-ink-dim text-sm mb-5">
+        <p className="eyebrow mb-3">Contact</p>
+        <h1 className="page-title mb-3 md:text-4xl">Talk to us</h1>
+        <p className="mb-6 text-ink-dim">
           Questions about a phone, an order, or the affiliate program — reach us directly.
         </p>
-        <div className="font-mono text-xl text-gold-bright mb-4">08035142589</div>
+        <div className="mb-5 font-mono text-2xl text-gold-bright">08035142589</div>
         <div className="flex gap-3">
-          <a href="tel:08035142589" className="btn-outline text-sm py-2.5">Call now</a>
-          <a href={`https://wa.me/${WHATSAPP_NUMBER}`} target="_blank" rel="noopener noreferrer" className="btn-outline text-sm py-2.5">
+          <a href="tel:08035142589" className="btn-outline px-5 py-2.5 text-sm">Call now</a>
+          <a href={`https://wa.me/${WHATSAPP_NUMBER}`} target="_blank" rel="noopener noreferrer" className="btn-outline px-5 py-2.5 text-sm">
             WhatsApp us
           </a>
         </div>
       </div>
 
-      <form onSubmit={handleSubmit} className="flex flex-col gap-3">
+      <form onSubmit={handleSubmit} className="card flex flex-col gap-3 p-6 md:p-7">
         <input className="input" placeholder="Your name" required maxLength={100} value={form.name}
           onChange={(e) => setForm({ ...form, name: e.target.value })} />
         <input className="input" placeholder="Phone number" required maxLength={40} value={form.phone}

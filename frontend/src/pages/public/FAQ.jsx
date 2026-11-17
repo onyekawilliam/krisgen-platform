@@ -12,21 +12,37 @@ export default function FAQ() {
   const [open, setOpen] = useState(null);
 
   return (
-    <div className="max-w-2xl mx-auto px-5 py-14">
-      <h1 className="font-display text-3xl font-bold mb-8">Frequently asked questions</h1>
-      <div className="flex flex-col gap-2">
-        {faqs.map((f, i) => (
-          <div key={f.q} className="card">
-            <button
-              className="w-full text-left font-display font-semibold flex justify-between items-center"
-              onClick={() => setOpen(open === i ? null : i)}
-            >
-              {f.q}
-              <span className="text-ink-faint">{open === i ? "–" : "+"}</span>
-            </button>
-            {open === i && <p className="text-ink-dim text-sm mt-3">{f.a}</p>}
-          </div>
-        ))}
+    <div className="mx-auto max-w-2xl px-5 py-14">
+      <p className="eyebrow mb-3">Help</p>
+      <h1 className="page-title mb-8 md:text-4xl">Frequently asked questions</h1>
+      <div className="flex flex-col gap-3">
+        {faqs.map((f, i) => {
+          const isOpen = open === i;
+          return (
+            <div key={f.q} className="card p-0">
+              <h2>
+                <button
+                  type="button"
+                  className="flex w-full items-center justify-between gap-4 px-5 py-4 text-left font-display font-semibold"
+                  onClick={() => setOpen(isOpen ? null : i)}
+                  aria-expanded={isOpen}
+                  aria-controls={`faq-${i}`}
+                >
+                  {f.q}
+                  <svg
+                    width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+                    strokeLinecap="round" className={`shrink-0 text-gold-bright transition-transform ${isOpen ? "rotate-45" : ""}`} aria-hidden="true"
+                  >
+                    <path d="M12 5v14M5 12h14" />
+                  </svg>
+                </button>
+              </h2>
+              {isOpen && (
+                <p id={`faq-${i}`} className="px-5 pb-5 text-sm leading-relaxed text-ink-dim">{f.a}</p>
+              )}
+            </div>
+          );
+        })}
       </div>
     </div>
   );

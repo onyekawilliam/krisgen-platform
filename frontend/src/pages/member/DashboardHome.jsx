@@ -11,6 +11,7 @@ export default function DashboardHome() {
   const { user } = useAuth();
   const [summary, setSummary] = useState(null);
   const [referralCount, setReferralCount] = useState(0);
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     api.get("/commissions/mine").then((res) => setSummary(res.data.summary));
@@ -21,38 +22,44 @@ export default function DashboardHome() {
 
   return (
     <div>
-      <h1 className="font-display text-2xl font-bold mb-1">Welcome back, {user?.name?.split(" ")[0]}</h1>
+      <h1 className="page-title mb-1">Welcome back, {user?.name?.split(" ")[0]}</h1>
       <p className="text-ink-dim text-sm mb-6">Here's how your referral activity is doing.</p>
 
-      <div className="card mb-6">
+      <div className="card mb-6 border-gold/30 bg-gradient-to-br from-navy-panel to-navy-panel2/60">
         <div className="label">Your referral link</div>
-        <div className="flex flex-wrap items-center gap-2">
-          <code className="font-mono text-sm text-gold-bright break-all">{referralLink}</code>
+        <div className="flex flex-wrap items-center gap-3">
+          <code className="min-w-0 break-all font-mono text-sm text-gold-bright">{referralLink}</code>
           <button
-            className="text-xs border border-navy-line rounded px-2.5 py-1 hover:border-gold"
-            onClick={() => navigator.clipboard.writeText(referralLink)}
+            type="button"
+            className="btn-outline px-4 py-2 text-xs"
+            onClick={() => {
+              navigator.clipboard?.writeText(referralLink).then(() => {
+                setCopied(true);
+                setTimeout(() => setCopied(false), 2000);
+              }).catch(() => {});
+            }}
           >
-            Copy
+            {copied ? "Copied ✓" : "Copy link"}
           </button>
         </div>
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
         <div className="card">
-          <div className="text-xl font-display font-bold text-gold-bright">{naira(summary?.total)}</div>
-          <div className="text-ink-faint text-xs mt-1">Total earned</div>
+          <div className="font-display text-2xl font-bold tracking-tight text-gold-bright">{naira(summary?.total)}</div>
+          <div className="mt-1.5 text-xs text-ink-dim">Total earned</div>
         </div>
         <div className="card">
-          <div className="text-xl font-display font-bold">{naira(summary?.pending)}</div>
-          <div className="text-ink-faint text-xs mt-1">Pending review</div>
+          <div className="font-display text-2xl font-bold tracking-tight">{naira(summary?.pending)}</div>
+          <div className="mt-1.5 text-xs text-ink-dim">Pending review</div>
         </div>
         <div className="card">
-          <div className="text-xl font-display font-bold">{naira(summary?.available)}</div>
-          <div className="text-ink-faint text-xs mt-1">Available to withdraw</div>
+          <div className="font-display text-2xl font-bold tracking-tight">{naira(summary?.available)}</div>
+          <div className="mt-1.5 text-xs text-ink-dim">Available to withdraw</div>
         </div>
         <div className="card">
-          <div className="text-xl font-display font-bold">{referralCount}</div>
-          <div className="text-ink-faint text-xs mt-1">People referred</div>
+          <div className="font-display text-2xl font-bold tracking-tight">{referralCount}</div>
+          <div className="mt-1.5 text-xs text-ink-dim">People referred</div>
         </div>
       </div>
 

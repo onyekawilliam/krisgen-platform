@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate, useSearchParams, Link } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import PasswordInput from "../../components/PasswordInput";
+import AuthLayout from "../../components/AuthLayout";
 
 export default function Register() {
   const { register } = useAuth();
@@ -28,7 +29,7 @@ export default function Register() {
   }
 
   return (
-    <div className="max-w-sm mx-auto px-5 py-14">
+    <AuthLayout>
       <h1 className="font-display text-2xl font-bold mb-1">Create a free account</h1>
       <p className="text-ink-dim text-sm mb-6">
         No fee to register. You'll get a referral link automatically.
@@ -37,20 +38,20 @@ export default function Register() {
 
       <form onSubmit={handleSubmit} className="flex flex-col gap-3">
         <div>
-          <label className="label">Full name</label>
-          <input className="input" required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+          <label className="label" htmlFor="reg-name">Full name</label>
+          <input id="reg-name" autoComplete="name" className="input" required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
         </div>
         <div>
-          <label className="label">Email</label>
-          <input type="email" className="input" required value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
+          <label className="label" htmlFor="reg-email">Email</label>
+          <input id="reg-email" autoComplete="email" type="email" className="input" required value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
         </div>
         <div>
-          <label className="label">Phone number</label>
-          <input className="input" required value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
+          <label className="label" htmlFor="reg-phone">Phone number</label>
+          <input id="reg-phone" autoComplete="tel" className="input" required value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
         </div>
         <div>
-          <label className="label">Password</label>
-          <PasswordInput autoComplete="new-password" required minLength={8} value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} />
+          <label className="label" htmlFor="reg-password">Password</label>
+          <PasswordInput id="reg-password" autoComplete="new-password" required minLength={8} value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} />
         </div>
 
         {error && <p className="text-coral text-sm">{error}</p>}
@@ -68,6 +69,6 @@ export default function Register() {
       <p className="text-ink-dim text-sm mt-5">
         Already have an account? <Link to="/login" className="text-teal">Log in</Link>
       </p>
-    </div>
+    </AuthLayout>
   );
 }

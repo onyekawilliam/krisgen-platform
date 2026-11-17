@@ -4,7 +4,7 @@ const asyncHandler = require("../utils/asyncHandler");
 const { validStock, validRate } = require("../utils/numericIntegrity");
 const cloudinaryImages = require("../services/cloudinaryImageService");
 const Settings = require("../models/Settings");
-const { queryString } = require("../utils/inputGuards");
+const { queryString, escapeRegExp } = require("../utils/inputGuards");
 
 const productFields = new Set(["name", "brand", "model", "images", "ram", "storage", "colors",
   "specifications", "description", "costPrice", "sellingPrice", "stock", "isActive", "commissionRateOverride"]);
@@ -57,7 +57,7 @@ function pagination(query) {
 // unless explicitly requested with admin-only logic below.
 exports.listProducts = asyncHandler(async (req, res) => {
   const brand = queryString(req.query.brand);
-  const search = queryString(req.query.search);
+  const search = queryString(req.query.search)?.trim();
   const { page, limit } = pagination(req.query);
 
   const query = { isActive: true };
@@ -70,11 +70,19 @@ exports.listProducts = asyncHandler(async (req, res) => {
     if (queryString(req.query.maxPrice) && Number.isFinite(max)) query.sellingPrice.$lte = max;
     if (!Object.keys(query.sellingPrice).length) delete query.sellingPrice;
   }
-  if (search) query.$text = { $search: search };
+  // Match anywhere in the name, model or brand, so typing "cam" finds "Camon".
+  if (search) {
+    const pattern = new RegExp(escapeRegExp(search), "i");
+    query.$or = [{ name: pattern }, { model: pattern }, { brand: pattern }];
+  }
+
+  // Customers can sort by newest or by price; anything else falls back to newest.
+  const sorts = { newest: { createdAt: -1, _id: -1 }, price_asc: { sellingPrice: 1, _id: 1 }, price_desc: { sellingPrice: -1, _id: 1 } };
+  const sort = sorts[queryString(req.query.sort)] || sorts.newest;
 
   const skip = (page - 1) * limit;
   const [products, total] = await Promise.all([
-    Product.find(query).skip(skip).limit(limit).sort({ createdAt: -1 }),
+    Product.find(query).skip(skip).limit(limit).sort(sort),
     Product.countDocuments(query),
   ]);
 

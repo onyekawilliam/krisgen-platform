@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import api from "../../api/axios";
+import StatusBadge from "../../components/StatusBadge";
 
 function naira(n) {
   return "₦" + Number(n).toLocaleString("en-NG");
@@ -34,12 +35,12 @@ function CommissionActions({ commission, updateStatus }) {
   return (
     <div className="flex flex-wrap gap-1.5">
       {commission.status === "pending" && (
-        <button onClick={() => updateStatus(commission._id, "approved")} className="text-xs border border-navy-line rounded px-2.5 py-1 hover:border-teal">Approve</button>
+        <button onClick={() => updateStatus(commission._id, "approved")} className="text-xs border border-navy-line rounded-lg px-3 py-1.5 transition-colors hover:border-teal">Approve</button>
       )}
       {["pending", "approved"].includes(commission.status) && (
         <button
           onClick={() => window.confirm("Reverse this commission? This cannot be undone.") && updateStatus(commission._id, "reversed")}
-          className="text-xs border border-navy-line rounded px-2.5 py-1 hover:border-coral hover:text-coral"
+          className="text-xs border border-navy-line rounded-lg px-3 py-1.5 transition-colors hover:border-coral hover:text-coral"
         >
           Reverse
         </button>
@@ -76,7 +77,7 @@ export default function AdminCommissions() {
   return (
     <div>
       <div className="flex justify-between items-center mb-5">
-        <h1 className="font-display text-xl font-bold">Commissions</h1>
+        <h1 className="page-title">Commissions</h1>
         <select className="input w-auto" value={filter} onChange={(e) => setFilter(e.target.value)}>
           <option value="">All statuses</option>
           {["pending", "approved", "paid", "cancelled", "reversed"].map((s) => <option key={s} value={s}>{s}</option>)}
@@ -113,7 +114,7 @@ export default function AdminCommissions() {
                 <td className="py-2.5 pr-3 text-ink-dim whitespace-nowrap">{naira(c.grossProfitSnapshot)}</td>
                 <td className="py-2.5 pr-3 text-ink-dim">{c.commissionRate}%</td>
                 <td className="py-2.5 pr-3 text-ink font-medium whitespace-nowrap">{naira(c.commissionAmount)}</td>
-                <td className="py-2.5 pr-3 text-ink-dim capitalize">{c.status}</td>
+                <td className="py-2.5 pr-3"><StatusBadge status={c.status} /></td>
                 <td className="py-2.5"><CommissionActions commission={c} updateStatus={updateStatus} /></td>
               </tr>
             ))}
@@ -129,7 +130,7 @@ export default function AdminCommissions() {
                 <p className="text-xs text-ink-faint uppercase">Sale</p>
                 <p className="text-ink font-medium break-all">{saleReference(c)}</p>
               </div>
-              <span className="text-xs text-ink-dim capitalize shrink-0">{c.status}</span>
+              <StatusBadge status={c.status} />
             </div>
             <dl className="grid grid-cols-2 gap-x-4 gap-y-3 mt-4 text-sm">
               <div><dt className="text-xs text-ink-faint">Customer</dt><dd className="text-ink">{customerName(c)}</dd><dd className="text-xs text-ink-faint">{customerKind(c)}</dd></div>

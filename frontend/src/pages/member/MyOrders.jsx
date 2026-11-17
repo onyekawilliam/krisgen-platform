@@ -2,21 +2,12 @@ import { useEffect, useRef, useState } from "react";
 import { useFlutterwave, closePaymentModal } from "flutterwave-react-v3";
 import api from "../../api/axios";
 import { useAuth } from "../../context/AuthContext";
+import StatusBadge, { orderStatusLabel } from "../../components/StatusBadge";
 
 
 function naira(n) {
   return "₦" + Number(n).toLocaleString("en-NG");
 }
-
-const statusColor = {
-  pending_payment: "text-ink-faint",
-  payment_review: "text-gold-bright",
-  paid: "text-teal",
-  processing: "text-gold-bright",
-  delivered: "text-teal",
-  cancelled: "text-coral",
-  refunded: "text-coral",
-};
 
 export default function MyOrders() {
   const [orders, setOrders] = useState([]);
@@ -26,6 +17,7 @@ export default function MyOrders() {
   const [loadingId, setLoadingId] = useState(null);
   const [error, setError] = useState("");
   const verifyingPayment = useRef(false);
+  const [pickup, setPickup] = useState(null);
 
   const handleFlutterPayment = useFlutterwave({
     public_key: import.meta.env.VITE_FLW_PUBLIC_KEY,
@@ -47,6 +39,7 @@ export default function MyOrders() {
 
   useEffect(() => {
     api.get("/orders/mine").then((res) => setOrders(res.data.data));
+    api.get("/store/pickup").then((res) => setPickup(res.data.data)).catch(() => {});
   }, []);
 
   async function continuePayment(order) {
@@ -146,7 +139,7 @@ export default function MyOrders() {
 
   return (
     <div>
-      <h1 className="font-display text-2xl font-bold mb-1">My orders</h1>
+      <h1 className="page-title mb-1">My orders</h1>
       <p className="text-ink-dim text-sm mb-6">Every phone you've bought through Krisgen.</p>
       {error && (
         <p className="text-coral text-sm mb-4">
@@ -161,10 +154,14 @@ export default function MyOrders() {
             <div key={o._id} className="card">
               <div className="flex justify-between items-center mb-2">
                 <span className="font-mono text-sm text-ink-dim">{o.orderNumber}</span>
-                <span className={`text-xs font-semibold uppercase ${statusColor[o.status] || "text-ink-dim"}`}>
-                  {o.status === "payment_review" ? "Payment received — awaiting admin review" : o.status.replaceAll("_", " ")}
-                </span>
+                <StatusBadge status={o.status} label={o.status === "payment_review" ? "Payment received — awaiting admin review" : orderStatusLabel(o)} />
               </div>
+              {o.fulfillment === "pickup" && (
+                <p className="mb-2 text-xs text-ink-dim">
+                  <span className="badge badge-ok mr-1.5">Shop pickup</span>
+                  {pickup?.address || "We will confirm the shop address and pickup time with you."}
+                </p>
+              )}
               {o.items.map((item, i) => (
                 <div key={i} className="text-sm text-ink flex justify-between">
                   <span>{item.name} × {item.quantity}</span>

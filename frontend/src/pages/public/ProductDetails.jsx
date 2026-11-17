@@ -22,6 +22,8 @@ export default function ProductDetails() {
   const [pendingOrder, setPendingOrder] = useState(null);
   const [loadError, setLoadError] = useState("");
   const [address, setAddress] = useState({ fullName: "", phone: "", address: "", city: "", state: "" });
+  const [fulfillment, setFulfillment] = useState("delivery");
+  const [pickup, setPickup] = useState(null);
 
   useEffect(() => {
     setLoadError("");
@@ -36,6 +38,14 @@ export default function ProductDetails() {
         )
       );
   }, [id]);
+
+  // Whether the shop offers pickup, and where. If this cannot load, only delivery is offered.
+  useEffect(() => {
+    api.get("/store/pickup").then((res) => setPickup(res.data.data)).catch(() => setPickup(null));
+  }, []);
+
+  const pickupAvailable = Boolean(pickup?.enabled);
+  const collecting = fulfillment === "pickup" && pickupAvailable;
 
   // Pre-fill the delivery form from the account, once, without overwriting edits.
   useEffect(() => {
@@ -114,10 +124,17 @@ async function handleBuy() {
     });
   }
 
-  const missing = Object.entries(address).find(([, value]) => !value.trim());
-  if (missing) {
-    setError("Enter your full delivery address so we can deliver your phone.");
-    return;
+  if (collecting) {
+    if (!address.fullName.trim() || !address.phone.trim()) {
+      setError("Enter your name and phone number so we can tell you when your phone is ready.");
+      return;
+    }
+  } else {
+    const missing = Object.entries(address).find(([, value]) => !value.trim());
+    if (missing) {
+      setError("Enter your full delivery address so we can deliver your phone.");
+      return;
+    }
   }
 
   setPlacing(true);
@@ -127,7 +144,8 @@ async function handleBuy() {
     // 1. Create the order first
     const res = await api.post("/orders", {
       items: [{ productId: id, quantity: qty }],
-      shippingAddress: address,
+      fulfillment: collecting ? "pickup" : "delivery",
+      shippingAddress: collecting ? { fullName: address.fullName, phone: address.phone } : address,
     });
 
     const order = res.data.data;
@@ -155,25 +173,32 @@ async function handleBuy() {
   if (!product) return <div className="max-w-4xl mx-auto px-5 py-10 text-ink-dim">Loading…</div>;
 
   return (
-    <div className="max-w-4xl mx-auto px-5 py-10 grid md:grid-cols-2 gap-10">
-      <div className="card aspect-square flex items-center justify-center text-ink-faint text-sm">
-        <ProductImage src={product.images?.[0]} alt={product.name} className="h-full w-full object-contain rounded-md" />
+    <div className="mx-auto grid max-w-6xl items-start gap-8 px-5 py-8 md:grid-cols-[1.05fr_1fr] md:gap-12 md:py-10">
+      <div className="card aspect-square overflow-hidden bg-navy-panel2 p-0 md:sticky md:top-32">
+        <ProductImage src={product.images?.[0]} alt={product.name} className="h-full w-full object-contain" />
       </div>
       <div>
-        <span className="text-xs uppercase tracking-wide text-teal font-semibold">{product.brand}</span>
-        <h1 className="font-display text-2xl font-bold mt-1">{product.name}</h1>
-        <div className="font-mono text-sm text-ink-dim mt-3 space-y-1">
-          {product.ram && <div>RAM: <span className="text-ink">{product.ram}</span></div>}
-          {product.storage && <div>Storage: <span className="text-ink">{product.storage}</span></div>}
-          {product.specifications?.camera && <div>Camera: <span className="text-ink">{product.specifications.camera}</span></div>}
-        </div>
-        {product.description && <p className="text-ink-dim text-sm mt-4">{product.description}</p>}
+        <nav aria-label="Breadcrumb" className="mb-4 text-sm text-ink-faint">
+          <Link to="/" className="hover:text-ink">Home</Link> <span aria-hidden="true">/</span>{" "}
+          <Link to="/shop" className="hover:text-ink">Phones</Link> <span aria-hidden="true">/</span>{" "}
+          <Link to={`/shop?brand=${product.brand}`} className="text-ink-dim hover:text-ink">{product.brand}</Link>
+        </nav>
+        <p className="eyebrow">{product.brand}</p>
+        <h1 className="mt-2 font-display text-3xl font-bold tracking-tight md:text-4xl">{product.name}</h1>
+        <dl className="mt-5 grid grid-cols-3 gap-3">
+          {product.ram && <div className="rounded-xl bg-navy-panel2 p-3"><dt className="text-[11px] uppercase tracking-wider text-ink-faint">RAM</dt><dd className="mt-1 font-mono text-sm">{product.ram}</dd></div>}
+          {product.storage && <div className="rounded-xl bg-navy-panel2 p-3"><dt className="text-[11px] uppercase tracking-wider text-ink-faint">Storage</dt><dd className="mt-1 font-mono text-sm">{product.storage}</dd></div>}
+          {product.specifications?.camera && <div className="rounded-xl bg-navy-panel2 p-3"><dt className="text-[11px] uppercase tracking-wider text-ink-faint">Camera</dt><dd className="mt-1 font-mono text-sm">{product.specifications.camera}</dd></div>}
+        </dl>
+        {product.description && <p className="mt-5 text-sm leading-relaxed text-ink-dim">{product.description}</p>}
 
-        <div className="text-2xl font-display font-bold text-gold-bright mt-6">{naira(product.sellingPrice)}</div>
+        <div className="card mt-7 p-6 shadow-lift">
+        <div className="font-display text-4xl font-bold tracking-tight">{naira(product.sellingPrice)}</div>
 
-        <div className="flex items-center gap-3 mt-4">
-          <label className="label mb-0">Qty</label>
+        <div className="mt-5 flex items-center gap-3">
+          <label className="label mb-0" htmlFor="qty">Qty</label>
           <input
+            id="qty"
             type="number"
             min="1"
             max={product.stock}
@@ -181,14 +206,43 @@ async function handleBuy() {
             onChange={(e) => setQty(Math.min(Math.max(1, Math.floor(Number(e.target.value)) || 1), Math.max(1, product.stock)))}
             className="input w-20"
           />
-          <span className="text-ink-faint text-xs">{product.stock} available</span>
+          <span className={`badge ${product.stock > 0 ? "badge-ok" : "badge-muted"}`}>{product.stock > 0 ? `${product.stock} in stock` : "Out of stock"}</span>
         </div>
 
-        <fieldset className="mt-6 border-t border-navy-line pt-5">
-          <legend className="font-display font-semibold text-sm pr-2">Delivery details</legend>
+        {pickupAvailable && (
+          <div className="mt-6" role="radiogroup" aria-label="How would you like to get your phone?">
+            <p className="label">How would you like to get it?</p>
+            <div className="grid grid-cols-2 gap-3">
+              {[
+                { value: "delivery", title: "Delivery", text: "To your address" },
+                { value: "pickup", title: "Shop pickup", text: "Collect it yourself" },
+              ].map((option) => {
+                const active = fulfillment === option.value;
+                return (
+                  <button
+                    key={option.value}
+                    type="button"
+                    role="radio"
+                    aria-checked={active}
+                    onClick={() => setFulfillment(option.value)}
+                    className={`rounded-xl border px-4 py-3 text-left transition ${
+                      active ? "border-gold bg-gold/10 ring-2 ring-gold/30" : "border-navy-line bg-navy-panel hover:border-ink-faint"
+                    }`}
+                  >
+                    <span className="block text-sm font-semibold">{option.title}</span>
+                    <span className="block text-xs text-ink-dim">{option.text}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        <fieldset className="mt-6 rounded-xl border border-navy-line bg-navy-deep/60 p-4">
+          <legend className="px-2 font-display text-sm font-semibold">{collecting ? "Your details" : "Delivery details"}</legend>
           <div className="grid grid-cols-2 gap-3">
             <div className="col-span-2">
-              <label className="label" htmlFor="ship-name">Recipient name</label>
+              <label className="label" htmlFor="ship-name">{collecting ? "Your name" : "Recipient name"}</label>
               <input id="ship-name" className="input" autoComplete="name" maxLength={100} value={address.fullName}
                 onChange={(e) => setAddress({ ...address, fullName: e.target.value })} />
             </div>
@@ -197,6 +251,8 @@ async function handleBuy() {
               <input id="ship-phone" className="input" autoComplete="tel" maxLength={40} value={address.phone}
                 onChange={(e) => setAddress({ ...address, phone: e.target.value })} />
             </div>
+            {!collecting && (
+              <>
             <div className="col-span-2">
               <label className="label" htmlFor="ship-address">Street address</label>
               <input id="ship-address" className="input" autoComplete="street-address" maxLength={250} value={address.address}
@@ -212,14 +268,42 @@ async function handleBuy() {
               <input id="ship-state" className="input" autoComplete="address-level1" maxLength={100} value={address.state}
                 onChange={(e) => setAddress({ ...address, state: e.target.value })} />
             </div>
+              </>
+            )}
+            {collecting && (
+              <div className="col-span-2 rounded-xl bg-navy-panel2 p-4 text-sm">
+                <div className="font-semibold">Collect from our shop</div>
+                <p className="mt-1 leading-relaxed text-ink-dim">
+                  {pickup?.address || "We will confirm the shop address and a pickup time with you by phone or WhatsApp once your payment is confirmed."}
+                </p>
+                {pickup?.instructions && <p className="mt-1.5 leading-relaxed text-ink-dim">{pickup.instructions}</p>}
+              </div>
+            )}
           </div>
         </fieldset>
 
-        {error && <p className="text-coral text-sm mt-3">{error}</p>}
+        {error && <p role="alert" className="mt-4 text-sm text-coral">{error}</p>}
 
-        <button onClick={handleBuy} disabled={placing || product.stock === 0} className="btn-primary mt-5 disabled:opacity-50">
+        <button onClick={handleBuy} disabled={placing || product.stock === 0} className="btn-primary mt-6 w-full py-3.5 text-base">
           {placing ? "Placing order…" : product.stock === 0 ? "Out of stock" : "Buy now"}
         </button>
+
+        <ul className="mt-6 grid gap-2.5 text-sm text-ink-dim">
+          <li className="flex items-center gap-2.5">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 text-mint" aria-hidden="true"><path d="M12 3l8 3v6c0 4.5-3.4 8-8 9-4.6-1-8-4.5-8-9V6l8-3z" /><path d="M8.5 12l2.5 2.5 4.5-5" /></svg>
+            Pay securely by card, bank transfer or USSD
+          </li>
+          <li className="flex items-center gap-2.5">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 text-mint" aria-hidden="true"><path d="M3 7h11v9H3z" /><path d="M14 10h4l3 3v3h-7z" /><circle cx="7" cy="18" r="1.8" /><circle cx="17" cy="18" r="1.8" /></svg>
+            {collecting ? "Collect it from our shop once payment is confirmed" : "Delivered to the address you enter above"}
+          </li>
+          <li className="flex items-center gap-2.5">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 text-mint" aria-hidden="true"><path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2z" /></svg>
+            Questions? <a href="tel:08035142589" className="text-gold-bright hover:underline">Call 08035142589</a> or{" "}
+            <a href="https://wa.me/2348035142589" target="_blank" rel="noopener noreferrer" className="text-gold-bright hover:underline">WhatsApp us</a>
+          </li>
+        </ul>
+        </div>
       </div>
     </div>
   );

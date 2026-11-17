@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import api from "../../api/axios";
+import AuthLayout from "../../components/AuthLayout";
 
 export default function ForgotPassword() {
   const [email, setEmail] = useState("");
@@ -23,7 +24,7 @@ export default function ForgotPassword() {
   }
 
   return (
-    <div className="max-w-sm mx-auto px-5 py-16">
+    <AuthLayout>
       <h1 className="font-display text-2xl font-bold mb-1">Reset your password</h1>
       <p className="text-ink-dim text-sm mb-6">Enter your account email and we'll send you a link to choose a new password.</p>
 
@@ -52,6 +53,6 @@ export default function ForgotPassword() {
       <p className="text-ink-dim text-sm mt-5">
         <Link to="/login" className="text-teal">Back to log in</Link>
       </p>
-    </div>
+    </AuthLayout>
   );
 }

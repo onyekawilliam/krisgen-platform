@@ -1,17 +1,10 @@
 import { useEffect, useState } from "react";
 import api from "../../api/axios";
+import StatusBadge from "../../components/StatusBadge";
 
 function naira(n) {
   return "₦" + Number(n || 0).toLocaleString("en-NG");
 }
-
-const statusColor = {
-  pending: "text-gold-bright",
-  approved: "text-teal",
-  paid: "text-teal",
-  cancelled: "text-coral",
-  reversed: "text-coral",
-};
 
 export default function MyEarnings() {
   const [commissions, setCommissions] = useState([]);
@@ -31,7 +24,7 @@ export default function MyEarnings() {
 
   return (
     <div>
-      <h1 className="font-display text-2xl font-bold mb-1">My earnings</h1>
+      <h1 className="page-title mb-1">My earnings</h1>
       <p className="text-ink-dim text-sm mb-6">Every commission, with the profit and rate it was calculated from.</p>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
@@ -64,7 +57,7 @@ export default function MyEarnings() {
                 <td className="py-2.5 text-ink-dim">{naira(c.grossProfitSnapshot)}</td>
                 <td className="py-2.5 text-ink-dim">{c.commissionRate}%</td>
                 <td className="py-2.5 text-ink font-medium">{naira(c.commissionAmount)}</td>
-                <td className={`py-2.5 capitalize ${statusColor[c.status]}`}>{c.status}</td>
+                <td className="py-2.5"><StatusBadge status={c.status} /></td>
               </tr>
             ))}
           </tbody>

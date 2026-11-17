@@ -5,7 +5,7 @@ const sections = [
     heading: "What we collect",
     body: [
       "Account details: your name, email address, phone number and a password (we keep only a scrambled version of it, never the password itself).",
-      "Order details: the phones you buy, the delivery name, phone, address, city and state you give us, and the status and payment reference of each order.",
+      "Order details: the phones you buy, the delivery name, phone, address, city and state you give us (or just your name and phone if you collect from the shop), and the status and payment reference of each order.",
       "Referral and earnings details: who referred you, who you referred, the commissions you earn and, if you request a withdrawal, the bank name, account number and account name you enter.",
       "Technical details: our servers keep ordinary request logs (such as IP address and time), and your browser keeps one sign-in cookie.",
     ],
