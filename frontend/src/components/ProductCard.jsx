@@ -13,7 +13,7 @@ export default function ProductCard({ product }) {
   return (
     <article className={`group card card-hover flex min-w-0 flex-col gap-3 p-3.5 ${stock === 0 ? "opacity-80" : ""}`}>
       <Link to={href} tabIndex={-1} aria-hidden="true" className="relative block aspect-square overflow-hidden rounded-xl bg-navy-panel2">
-        <ProductImage src={product.images?.[0]} alt={product.name} className="h-full w-full object-contain transition duration-300 group-hover:scale-[1.03]" />
+        <ProductImage src={product.images?.[0]} alt={product.name} width={600} className="h-full w-full object-contain transition duration-300 group-hover:scale-[1.03]" />
         {stock === 0 && (
           <span className="absolute left-2.5 top-2.5 rounded-full bg-brand px-2.5 py-1 text-[11px] font-semibold text-brand-text">Sold out</span>
         )}

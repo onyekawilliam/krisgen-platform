@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import api from "../../api/axios";
 import ProductImage from "../../components/ProductImage";
+import PhotoManager from "../../components/PhotoManager";
 
 function naira(n) {
   return "₦" + Number(n).toLocaleString("en-NG");
@@ -13,17 +14,9 @@ export default function AdminProducts() {
   const [editing, setEditing] = useState(null); // product being edited, or "new"
   const [form, setForm] = useState(emptyForm);
   const [error, setError] = useState("");
-  const [imageFile, setImageFile] = useState(null);
-  const [imagePreview, setImagePreview] = useState("");
-  const [imageStatus, setImageStatus] = useState("");
+  const [photos, setPhotos] = useState([]); // photos already saved on the phone being edited
+  const [queued, setQueued] = useState([]); // photos chosen for a new phone, uploaded after it is saved
   const [saving, setSaving] = useState(false);
-
-  useEffect(() => {
-    if (!imageFile) return;
-    const preview = URL.createObjectURL(imageFile);
-    setImagePreview(preview);
-    return () => URL.revokeObjectURL(preview);
-  }, [imageFile]);
 
   function load() {
     api.get("/products/admin/all").then((res) => setProducts(res.data.data));
@@ -33,9 +26,8 @@ export default function AdminProducts() {
   function startEdit(p) {
     setEditing(p._id);
     setError("");
-    setImageStatus("");
-    setImageFile(null);
-    setImagePreview(p.images?.[0] || "");
+    setPhotos(p.images || []);
+    setQueued([]);
     setForm({
       name: p.name, brand: p.brand, model: p.model, ram: p.ram || "", storage: p.storage || "",
       costPrice: p.costPrice, sellingPrice: p.sellingPrice, stock: p.stock, commissionRateOverride: p.commissionRateOverride ?? "",
@@ -45,31 +37,9 @@ export default function AdminProducts() {
   function startNew() {
     setEditing("new");
     setError("");
-    setImageStatus("");
-    setImageFile(null);
-    setImagePreview("");
+    setPhotos([]);
+    setQueued([]);
     setForm(emptyForm);
-  }
-
-  function chooseImage(file) {
-    setError("");
-    setImageStatus("");
-    if (!file) {
-      setImageFile(null);
-      setImagePreview(editing !== "new" ? products.find((p) => p._id === editing)?.images?.[0] || "" : "");
-      return;
-    }
-    const allowedTypes = ["image/jpeg", "image/png", "image/webp", "image/gif", "image/avif"];
-    if (!allowedTypes.includes(file.type)) {
-      setError("Choose a JPEG, PNG, WebP, GIF, or AVIF image.");
-      return;
-    }
-    if (file.size > 5 * 1024 * 1024) {
-      setError("Product images must be 5 MB or smaller.");
-      return;
-    }
-    setImageFile(file);
-    setImageStatus("Image selected. It will upload when you save the product.");
   }
 
   async function handleSubmit(e) {
@@ -92,50 +62,33 @@ export default function AdminProducts() {
         await api.patch(`/products/admin/${editing}`, payload);
       }
 
-      if (imageFile) {
-        setImageStatus("Uploading image to Cloudinary…");
-        const data = new FormData();
-        data.append("image", imageFile);
+      if (queued.length) {
+        // Upload the photos chosen for a new phone, one at a time, now that it exists.
+        const waiting = [...queued];
         try {
-          const uploaded = await api.post(`/products/admin/${productId}/image`, data);
-          setImagePreview(uploaded.data.data.images?.[0] || "");
-          setImageFile(null);
-          setImageStatus("Image saved successfully.");
+          while (waiting.length) {
+            const data = new FormData();
+            data.append("image", waiting[0]);
+            const uploaded = await api.post(`/products/admin/${productId}/images`, data);
+            setPhotos(uploaded.data.data.images || []);
+            waiting.shift();
+            setQueued([...waiting]);
+          }
         } catch (uploadError) {
-          if (editing === "new") setEditing(productId);
-          setError(`Product details were saved, but the image upload failed: ${uploadError.response?.data?.message || "Please try again."}`);
-          setImageStatus("Choose Save again to retry the image upload.");
+          setEditing(productId);
+          setError(`The phone was saved, but ${waiting.length} photo${waiting.length === 1 ? "" : "s"} could not be uploaded: ${uploadError.response?.data?.message || "please try again."}`);
           await load();
           return;
         }
       }
 
       setEditing(null);
-      setImageFile(null);
+      setQueued([]);
       await load();
     } catch (err) {
       setError(err.response?.data?.message || "Could not save product");
     } finally {
       setSaving(false);
-    }
-  }
-
-  async function removeImage() {
-    if (imageFile) {
-      chooseImage(null);
-      return;
-    }
-    if (!editing || editing === "new" || !imagePreview) return;
-    setError("");
-    setImageStatus("Removing image…");
-    try {
-      const response = await api.delete(`/products/admin/${editing}/image`);
-      setImagePreview(response.data.data.images?.[0] || "");
-      setImageStatus(response.data.warning || "Product image removed.");
-      await load();
-    } catch (err) {
-      setError(err.response?.data?.message || "Could not remove the product image.");
-      setImageStatus("");
     }
   }
 
@@ -175,19 +128,14 @@ export default function AdminProducts() {
             }
           />
           <input className="input" type="number" placeholder="Stock" required value={form.stock} onChange={(e) => setForm({ ...form, stock: e.target.value })} />
-          <div className="col-span-2">
-            <label className="label" htmlFor="product-image">Product image</label>
-            <input id="product-image" className="input" type="file" accept="image/jpeg,image/png,image/webp,image/gif,image/avif"
-              onChange={(event) => chooseImage(event.target.files?.[0])} />
-            <p className="text-ink-faint text-xs mt-1">JPEG, PNG, WebP, GIF or AVIF; maximum 5 MB.</p>
-            {imagePreview && (
-              <div className="flex items-center gap-3 mt-3">
-                <ProductImage src={imagePreview} alt={form.name || "Product preview"} className="w-24 h-24 object-contain rounded-md" />
-                {editing !== "new" && <button type="button" onClick={removeImage} className="text-xs text-coral hover:underline">{imageFile ? "Clear selected image" : "Remove current image"}</button>}
-              </div>
-            )}
-            {imageStatus && <p className="text-teal text-xs mt-2" role="status">{imageStatus}</p>}
-          </div>
+          <PhotoManager
+            productId={editing}
+            name={form.name}
+            photos={photos}
+            onPhotosChange={(next) => { setPhotos(next); load(); }}
+            queued={queued}
+            onQueuedChange={setQueued}
+          />
           {error && <p className="text-coral text-sm col-span-2">{error}</p>}
           <div className="col-span-2 flex gap-2">
             <button type="submit" disabled={saving} className="btn-primary text-sm py-2 px-4 disabled:opacity-50">{saving ? "Saving…" : "Save"}</button>
@@ -215,7 +163,14 @@ export default function AdminProducts() {
           {products.map((p) => (
             <tr key={p._id} className="border-b border-navy-line">
               <td className="py-2.5 text-ink">{p.brand}</td>
-              <td className="py-2.5"><ProductImage src={p.images?.[0]} alt={p.name} className="w-12 h-12 object-contain rounded" /></td>
+              <td className="py-2.5">
+                <div className="relative h-12 w-12">
+                  <ProductImage src={p.images?.[0]} alt={p.name} width={200} className="h-12 w-12 rounded object-contain" />
+                  {(p.images?.length || 0) > 1 && (
+                    <span className="absolute -bottom-1 -right-1 rounded-full bg-brand px-1.5 py-0.5 text-[10px] font-semibold text-brand-text">{p.images.length}</span>
+                  )}
+                </div>
+              </td>
               <td className="py-2.5 text-ink">{p.name}</td>
               <td className="py-2.5 text-ink-dim">{naira(p.costPrice)}</td>
               <td className="py-2.5 text-ink-dim">{naira(p.sellingPrice)}</td>

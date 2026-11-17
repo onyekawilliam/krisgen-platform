@@ -13,7 +13,10 @@ const productSchema = new mongoose.Schema(
     images: [{ type: String }],
     // Public images remain in `images` for backwards compatibility. Only the
     // admin API selects this Cloudinary identifier for safe asset cleanup.
-    imagePublicId: { type: String, select: false },
+    imagePublicId: { type: String, select: false }, // legacy: the one ID products had before galleries
+    // The Cloudinary ID of each photo, in the same order as `images` (null for a
+    // photo that was not uploaded through the admin). Never sent to customers.
+    imagePublicIds: { type: [String], select: false, default: [] },
 
     ram: { type: String },
     storage: { type: String },

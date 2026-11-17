@@ -6,6 +6,9 @@ const cloudinaryImages = require("../services/cloudinaryImageService");
 const Settings = require("../models/Settings");
 const { queryString, escapeRegExp } = require("../utils/inputGuards");
 
+const MAX_PHOTOS = 5;
+const imageFields = "+imagePublicIds +imagePublicId";
+
 const productFields = new Set(["name", "brand", "model", "images", "ram", "storage", "colors",
   "specifications", "description", "costPrice", "sellingPrice", "stock", "isActive", "commissionRateOverride"]);
 function validateProductChanges(body) {
@@ -17,6 +20,13 @@ function validateProductChanges(body) {
   }
   if (Object.hasOwn(body, "commissionRateOverride") && body.commissionRateOverride !== null && !validRate(body.commissionRateOverride)) {
     throw new ApiError(400, "Commission percentage must be between 0 and 100, or null to use the default");
+  }
+  if (Object.hasOwn(body, "images")) {
+    const images = body.images;
+    if (!Array.isArray(images) || images.length > MAX_PHOTOS ||
+        !images.every((url) => typeof url === "string" && /^https:\/\/\S+$/.test(url) && url.length <= 500)) {
+      throw new ApiError(400, `Photos must be a list of up to ${MAX_PHOTOS} secure (https) image links`);
+    }
   }
   for (const field of ["costPrice", "sellingPrice"]) {
     if (Object.hasOwn(body, field) && !(typeof body[field] === "number" && Number.isFinite(body[field]))) {
@@ -98,12 +108,12 @@ exports.getProduct = asyncHandler(async (req, res) => {
 // ----- Admin only below -----
 
 exports.adminListProducts = asyncHandler(async (req, res) => {
-  const products = await Product.find().select("+costPrice +imagePublicId").sort({ createdAt: -1 });
+  const products = await Product.find().select("+costPrice " + imageFields).sort({ createdAt: -1 });
   res.json({ success: true, data: products });
 });
 
 exports.adminGetProduct = asyncHandler(async (req, res) => {
-  const product = await Product.findById(req.params.id).select("+costPrice +imagePublicId");
+  const product = await Product.findById(req.params.id).select("+costPrice " + imageFields);
   if (!product) throw new ApiError(404, "Product not found");
   res.json({ success: true, data: product });
 });
@@ -123,13 +133,16 @@ exports.createProduct = asyncHandler(async (req, res) => {
 
 exports.updateProduct = asyncHandler(async (req, res) => {
   validateProductChanges(req.body);
-  const product = await Product.findById(req.params.id).select("+costPrice +imagePublicId");
+  const product = await Product.findById(req.params.id).select("+costPrice " + imageFields);
   if (!product) throw new ApiError(404, "Product not found");
 
-  const previousPublicId = product.imagePublicId;
-  const previousImageUrl = product.images?.[0];
+  const before = photoIds(product).map((id, i) => ({ id, url: product.images[i] }));
   Object.assign(product, req.body);
-  if (Object.hasOwn(req.body, "images")) product.imagePublicId = undefined;
+  if (Object.hasOwn(req.body, "images")) {
+    const idByUrl = new Map(before.map((p) => [p.url, p.id]));
+    product.imagePublicIds = product.images.map((url) => idByUrl.get(url) ?? null);
+    product.imagePublicId = undefined;
+  }
 
   validatePrices(product.costPrice, product.sellingPrice);
   if (Object.hasOwn(req.body, "commissionRateOverride")) {
@@ -138,8 +151,10 @@ exports.updateProduct = asyncHandler(async (req, res) => {
 
   await product.save();
   let cleanupWarning = null;
-  if (Object.hasOwn(req.body, "images") && previousPublicId) {
-    cleanupWarning = await deleteCloudinaryImageIfUnused(previousPublicId, previousImageUrl);
+  if (Object.hasOwn(req.body, "images")) {
+    for (const old of before.filter((p) => p.id && !product.images.includes(p.url))) {
+      cleanupWarning = (await deleteCloudinaryImageIfUnused(old.id, old.url)) || cleanupWarning;
+    }
   }
   res.json({ success: true, data: product, ...(cleanupWarning ? { warning: cleanupWarning } : {}) });
 });
@@ -195,74 +210,112 @@ async function storeProductImage(file) {
   return asset;
 }
 
+// The Cloudinary ID of each photo, in the same order as `images`. Products saved
+// before galleries existed have a single ID in `imagePublicId`.
+function photoIds(product) {
+  const images = product.images || [];
+  const ids = product.imagePublicIds?.length
+    ? [...product.imagePublicIds]
+    : product.imagePublicId ? [product.imagePublicId] : [];
+  while (ids.length < images.length) ids.push(null);
+  return ids.slice(0, images.length);
+}
+
+function photoReferences(publicId, imageUrl) {
+  const references = [{ imagePublicIds: publicId }, { imagePublicId: publicId }];
+  if (imageUrl) references.push({ images: imageUrl });
+  return references;
+}
+
+// Removes a photo from Cloudinary, but only when no product still uses it.
 async function deleteCloudinaryImageIfUnused(publicId, imageUrl) {
   if (!publicId) return null;
   try {
-    const references = [{ imagePublicId: publicId }];
-    if (imageUrl) references.push({ images: imageUrl });
-    if (await Product.exists({ $or: references })) return null;
+    if (await Product.exists({ $or: photoReferences(publicId, imageUrl) })) return null;
     await cloudinaryImages.deleteProductImage(publicId);
     return null;
   } catch {
-    return "The product image changed, but its unused Cloudinary copy could not be removed.";
+    return "The photo was removed, but its unused Cloudinary copy could not be deleted.";
   }
 }
 
 async function removeNewAssetAfterFailure(publicId, imageUrl) {
   if (!publicId) return;
   try {
-    const references = [{ imagePublicId: publicId }];
-    if (imageUrl) references.push({ images: imageUrl });
-    if (!(await Product.exists({ $or: references }))) {
+    if (!(await Product.exists({ $or: photoReferences(publicId, imageUrl) }))) {
       await cloudinaryImages.deleteProductImage(publicId);
     }
   } catch {
-    // Preserve the original product-save error; cleanup is best-effort.
+    // Cleanup is best-effort; the original error is what the admin needs to see.
   }
 }
 
-function setPrimaryImage(product, asset) {
-  const images = Array.isArray(product.images) ? [...product.images] : [];
-  if (images.length) images[0] = asset.secureUrl;
-  else images.push(asset.secureUrl);
-  product.images = images;
-  product.imagePublicId = asset.publicId;
+function photoIndex(value, count) {
+  if (!/^\d{1,2}$/.test(String(value)) || Number(value) >= count) throw new ApiError(404, "Photo not found");
+  return Number(value);
 }
 
-exports.uploadProductImage = asyncHandler(async (req, res) => {
+// Adds one photo to the gallery of a phone (a phone can have one to five).
+exports.addProductPhoto = asyncHandler(async (req, res) => {
   if (!req.file) throw new ApiError(400, "Choose an image file to upload");
-  const product = await Product.findById(req.params.id).select("+imagePublicId");
+  const product = await Product.findById(req.params.id).select(imageFields);
   if (!product) throw new ApiError(404, "Product not found");
+  const full = `A phone can have at most ${MAX_PHOTOS} photos. Remove one first.`;
+  if ((product.images?.length || 0) >= MAX_PHOTOS) throw new ApiError(409, full);
 
   const asset = await storeProductImage(req.file);
-  const previousPublicId = product.imagePublicId;
-  const previousImageUrl = product.images?.[0];
-  setPrimaryImage(product, asset);
-  try {
-    await product.save();
-  } catch (error) {
-    await removeNewAssetAfterFailure(asset.publicId, asset.secureUrl);
-    throw error;
-  }
 
-  const cleanupWarning = previousPublicId && previousPublicId !== asset.publicId
-    ? await deleteCloudinaryImageIfUnused(previousPublicId, previousImageUrl)
-    : null;
-  res.json({ success: true, data: product, ...(cleanupWarning ? { warning: cleanupWarning } : {}) });
+  // Bring a phone saved before galleries into the new shape, so the new photo's ID lines up.
+  const ids = photoIds(product);
+  if (product.imagePublicId || ids.length !== (product.imagePublicIds?.length || 0)) {
+    await Product.updateOne({ _id: product._id }, { $set: { imagePublicIds: ids }, $unset: { imagePublicId: "" } });
+  }
+  // Atomic, so two uploads at once cannot push a phone past five photos.
+  const updated = await Product.findOneAndUpdate(
+    { _id: product._id, $expr: { $lt: [{ $size: { $ifNull: ["$images", []] } }, MAX_PHOTOS] } },
+    { $push: { images: asset.secureUrl, imagePublicIds: asset.publicId } },
+    { new: true }
+  );
+  if (!updated) {
+    await removeNewAssetAfterFailure(asset.publicId, asset.secureUrl);
+    throw new ApiError(409, full);
+  }
+  res.status(201).json({ success: true, data: updated });
 });
 
-exports.deleteProductImage = asyncHandler(async (req, res) => {
-  const product = await Product.findById(req.params.id).select("+imagePublicId");
+// Removes the photo at a position in the gallery.
+exports.deleteProductPhoto = asyncHandler(async (req, res) => {
+  const product = await Product.findById(req.params.id).select(imageFields);
   if (!product) throw new ApiError(404, "Product not found");
+  const index = photoIndex(req.params.index, product.images?.length || 0);
 
-  const previousPublicId = product.imagePublicId;
-  const previousImageUrl = product.images?.[0];
-  const images = Array.isArray(product.images) ? [...product.images] : [];
-  images.shift();
+  const images = [...product.images];
+  const ids = photoIds(product);
+  const [url] = images.splice(index, 1);
+  const [publicId] = ids.splice(index, 1);
   product.images = images;
+  product.imagePublicIds = ids;
   product.imagePublicId = undefined;
   await product.save();
 
-  const cleanupWarning = await deleteCloudinaryImageIfUnused(previousPublicId, previousImageUrl);
+  const cleanupWarning = await deleteCloudinaryImageIfUnused(publicId, url);
   res.json({ success: true, data: product, ...(cleanupWarning ? { warning: cleanupWarning } : {}) });
+});
+
+// Makes a photo the main one: the first customers see on the card and the page.
+exports.makePrimaryPhoto = asyncHandler(async (req, res) => {
+  const product = await Product.findById(req.params.id).select(imageFields);
+  if (!product) throw new ApiError(404, "Product not found");
+  const index = photoIndex(req.params.index, product.images?.length || 0);
+  if (index > 0) {
+    const images = [...product.images];
+    const ids = photoIds(product);
+    images.unshift(...images.splice(index, 1));
+    ids.unshift(...ids.splice(index, 1));
+    product.images = images;
+    product.imagePublicIds = ids;
+    product.imagePublicId = undefined;
+    await product.save();
+  }
+  res.json({ success: true, data: product });
 });
