@@ -10,18 +10,26 @@ const { verifyOrderPayment } = require("../services/onlinePaymentService");
 const { minorUnits } = require("../utils/paymentMoney");
 const { reverseCommissionsForOrder } = require("../services/commissionService");
 const Settings = require("../models/Settings");
-const { requireString, queryString } = require("../utils/inputGuards");
+const { requireString, queryString, isString } = require("../utils/inputGuards");
+const { canonicalState, blockedArea } = require("../utils/nigeria");
 
+// Delivery goes to a town in a state, not to a street, so those two are required
+// and the street line is only an optional landmark (a park, bus stop or area).
 function validShippingAddress(address) {
   if (!address || typeof address !== "object" || Array.isArray(address)) {
-    throw new ApiError(400, "A delivery address is required");
+    throw new ApiError(400, "A delivery state and town are required");
   }
+  const state = canonicalState(address.state);
+  if (!state) throw new ApiError(400, "Choose your state from the list");
+  if (address.address != null && !isString(address.address)) throw new ApiError(400, "Landmark must be text");
+  const landmark = (address.address || "").trim();
+  if (landmark.length > 250) throw new ApiError(400, "Landmark must be at most 250 characters");
   return {
     fullName: requireString(address.fullName, "Recipient name", { max: 100 }),
     phone: requireString(address.phone, "Recipient phone", { max: 40, min: 7 }),
-    address: requireString(address.address, "Street address", { max: 250 }),
-    city: requireString(address.city, "City", { max: 100 }),
-    state: requireString(address.state, "State", { max: 100 }),
+    address: landmark,
+    city: requireString(address.city, "Town", { max: 100 }),
+    state,
   };
 }
 
@@ -53,6 +61,17 @@ exports.createOrder = asyncHandler(async (req, res) => {
   const shippingAddress = fulfillment === "pickup"
     ? validPickupContact(req.body.shippingAddress)
     : validShippingAddress(req.body.shippingAddress);
+  if (fulfillment === "delivery") {
+    // The owner can switch delivery off for particular towns (for example the
+    // town the shop is in), where customers collect instead.
+    const settings = await Settings.getSettings();
+    const blocked = blockedArea(settings.pickupOnlyAreas, shippingAddress.state, shippingAddress.city);
+    if (blocked) {
+      throw new ApiError(400, settings.pickupEnabled === false
+        ? `We cannot deliver to ${blocked.town}, ${blocked.state} right now.`
+        : `We do not deliver in ${blocked.town}, ${blocked.state}. Please choose shop pickup.`);
+    }
+  }
   if (!Array.isArray(items) || items.length === 0 || items.length > 100) {
     throw new ApiError(400, "Order must contain 1 to 100 items");
   }

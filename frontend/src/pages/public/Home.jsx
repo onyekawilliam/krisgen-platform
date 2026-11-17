@@ -18,7 +18,7 @@ const perks = [
   },
   {
     title: "Delivery or pickup",
-    text: "Get it delivered to your address, or collect it from our shop.",
+    text: "Delivered to your town, or collect it from our shop.",
     icon: <><path d="M3 7h11v9H3z" /><path d="M14 10h4l3 3v3h-7z" /><circle cx="7" cy="18" r="1.8" /><circle cx="17" cy="18" r="1.8" /></>,
   },
   {
@@ -31,7 +31,7 @@ const perks = [
 const steps = [
   { n: "01", title: "Pick your phone", text: "Browse by brand or search for a model, and check the price and stock." },
   { n: "02", title: "Pay securely", text: "Pay by card, bank transfer or USSD. We confirm your payment before we ship." },
-  { n: "03", title: "Get your phone", text: "We deliver it to your address, or you collect it from our shop." },
+  { n: "03", title: "Get your phone", text: "We deliver it to your town, or you collect it from our shop." },
 ];
 
 function Icon({ children, className = "" }) {

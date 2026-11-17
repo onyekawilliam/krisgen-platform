@@ -429,10 +429,9 @@ export default function AdminOrders() {
                     {o.shippingAddress?.fullName} · {o.shippingAddress?.phone}
                   </div>
                 )}
-                {o.shippingAddress?.address && (
-                  <div className="text-xs text-ink-faint mt-0.5">
-                    Deliver to {o.shippingAddress.fullName}, {o.shippingAddress.address}, {o.shippingAddress.city},{" "}
-                    {o.shippingAddress.state} · {o.shippingAddress.phone}
+                {o.fulfillment !== "pickup" && o.shippingAddress?.city && (
+                  <div className="mt-0.5 text-xs text-ink-faint">
+                    Deliver to {o.shippingAddress.fullName} · {[o.shippingAddress.address, o.shippingAddress.city, o.shippingAddress.state].filter(Boolean).join(", ")} · {o.shippingAddress.phone}
                   </div>
                 )}
               </td>

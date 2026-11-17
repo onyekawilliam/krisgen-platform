@@ -13,6 +13,12 @@ const settingsSchema = new mongoose.Schema({
   pickupEnabled: { type: Boolean, default: true },
   pickupAddress: { type: String, default: "", trim: true, maxlength: 300 },
   pickupInstructions: { type: String, default: "", trim: true, maxlength: 300 },
+  // Towns where delivery is switched off, so customers there collect from the
+  // shop. For example { state: "Kogi", town: "Ankpa" }.
+  pickupOnlyAreas: {
+    type: [{ _id: false, state: { type: String, required: true, trim: true }, town: { type: String, required: true, trim: true, maxlength: 80 } }],
+    default: [],
+  },
 }, { timestamps: true });
 
 guardNumericUpdates(settingsSchema, {

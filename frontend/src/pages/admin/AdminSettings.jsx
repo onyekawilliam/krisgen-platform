@@ -8,6 +8,11 @@ export default function AdminSettings() {
   const [error, setError] = useState("");
   const [pickupSaved, setPickupSaved] = useState(false);
   const [pickupError, setPickupError] = useState("");
+  const [states, setStates] = useState([]);
+  const [areas, setAreas] = useState([]);
+  const [newArea, setNewArea] = useState({ state: "", town: "" });
+  const [areaSaved, setAreaSaved] = useState(false);
+  const [areaError, setAreaError] = useState("");
 
   function load(data) {
     setForm({ directCommissionRate: data.directCommissionRate, referralOverrideRate: data.referralOverrideRate });
@@ -16,6 +21,7 @@ export default function AdminSettings() {
       pickupAddress: data.pickupAddress || "",
       pickupInstructions: data.pickupInstructions || "",
     });
+    setAreas((data.pickupOnlyAreas || []).map((a) => ({ state: a.state, town: a.town })));
   }
 
   useEffect(() => {
@@ -23,6 +29,7 @@ export default function AdminSettings() {
       .get("/commissions/admin/settings")
       .then((res) => load(res.data.data))
       .catch(() => setError("Could not load settings. Refresh to try again."));
+    api.get("/store/delivery").then((res) => setStates(res.data.data.states)).catch(() => {});
   }, []);
 
   async function handleSubmit(e) {
@@ -53,6 +60,32 @@ export default function AdminSettings() {
       setTimeout(() => setPickupSaved(false), 2000);
     } catch (err) {
       setPickupError(err.response?.data?.message || "Could not save the pickup details.");
+    }
+  }
+
+  async function saveAreas(next) {
+    setAreaError("");
+    setAreaSaved(false);
+    try {
+      const res = await api.patch("/commissions/admin/settings", { pickupOnlyAreas: next });
+      load(res.data.data);
+      setAreaSaved(true);
+      setTimeout(() => setAreaSaved(false), 2000);
+      return true;
+    } catch (err) {
+      setAreaError(err.response?.data?.message || "Could not save the towns.");
+      return false;
+    }
+  }
+
+  async function addArea(e) {
+    e.preventDefault();
+    if (!newArea.state || newArea.town.trim().length < 2) {
+      setAreaError("Choose a state and type the town's name.");
+      return;
+    }
+    if (await saveAreas([...areas, { state: newArea.state, town: newArea.town.trim() }])) {
+      setNewArea({ state: newArea.state, town: "" });
     }
   }
 
@@ -126,6 +159,54 @@ export default function AdminSettings() {
           {pickupSaved && <p className="text-sm text-teal">Saved.</p>}
         </form>
       </div>
+
+      <section className="card mt-6">
+        <h2 className="font-display text-lg font-semibold">Towns where delivery is switched off</h2>
+        <p className="mt-1 max-w-2xl text-sm text-ink-dim">
+          Customers choose their state and town at checkout. For the towns listed here, delivery is not offered, so
+          they collect from your shop instead, for example the town your shop is in. Everywhere else can choose delivery.
+          Customers can still choose shop pickup anywhere.
+        </p>
+
+        {areas.length === 0 ? (
+          <p className="mt-4 text-sm text-ink-faint">No towns listed yet, so delivery is offered everywhere.</p>
+        ) : (
+          <ul className="mt-4 flex flex-wrap gap-2">
+            {areas.map((a) => (
+              <li key={a.state + a.town} className="flex items-center gap-2 rounded-full bg-navy-panel2 py-1.5 pl-4 pr-1.5 text-sm font-medium">
+                {a.town}, {a.state}
+                <button
+                  type="button"
+                  onClick={() => saveAreas(areas.filter((x) => !(x.state === a.state && x.town === a.town)))}
+                  aria-label={`Allow delivery to ${a.town}, ${a.state} again`}
+                  className="flex h-7 w-7 items-center justify-center rounded-full text-ink-dim transition-colors hover:bg-navy-line hover:text-coral"
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" /></svg>
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+
+        <form onSubmit={addArea} className="mt-5 grid max-w-2xl gap-3 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
+          <div>
+            <label className="label" htmlFor="area-state">State</label>
+            <select id="area-state" className="input" value={newArea.state} onChange={(e) => setNewArea({ ...newArea, state: e.target.value })}>
+              <option value="">Choose a state</option>
+              {states.map((st) => (
+                <option key={st} value={st}>{st}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="label" htmlFor="area-town">Town</label>
+            <input id="area-town" className="input" maxLength={80} placeholder="For example: Ankpa" value={newArea.town} onChange={(e) => setNewArea({ ...newArea, town: e.target.value })} />
+          </div>
+          <button type="submit" className="btn-primary px-6">Switch off delivery</button>
+        </form>
+        {areaError && <p role="alert" className="mt-3 text-sm text-coral">{areaError}</p>}
+        {areaSaved && <p className="mt-3 text-sm text-teal">Saved.</p>}
+      </section>
     </div>
   );
 }

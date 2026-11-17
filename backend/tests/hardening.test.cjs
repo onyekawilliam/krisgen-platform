@@ -410,6 +410,95 @@ test("pickup settings are validated and the commission rates are untouched by th
   assert.equal((await request("PATCH", settingsPath, { directCommissionRate: 99 }, admin)).status, 400, "the 100% rule still applies");
 });
 
+// ----- delivery by state and town -----
+
+const { canonicalState, townMatches } = require("../utils/nigeria");
+const settingsUrl = "/api/commissions/admin/settings";
+const deliveryTo = (state, city, extra = {}) => request("POST", "/api/orders", {
+  items: pickupItems(), fulfillment: "delivery",
+  shippingAddress: { fullName: "A Buyer", phone: "08011112222", state, city, ...extra },
+}, alice);
+
+test("states and towns are matched forgivingly but exactly", () => {
+  assert.equal(canonicalState("kogi"), "Kogi");
+  assert.equal(canonicalState(" Kogi State "), "Kogi");
+  assert.equal(canonicalState("ABUJA"), "FCT (Abuja)");
+  assert.equal(canonicalState("fct"), "FCT (Abuja)");
+  for (const bad of ["", "Atlantis", null, undefined, 5, {}, ["Kogi"]]) assert.equal(canonicalState(bad), null, JSON.stringify(bad));
+  for (const entered of ["Ankpa", "ankpa", "  ANKPA ", "Ankpa town", "Ankpa, Kogi", "ankpa-town"]) {
+    assert.equal(townMatches("Ankpa", entered), true, entered);
+  }
+  for (const entered of ["Ankparu", "Anka", "Idah", "", "pa"]) assert.equal(townMatches("Ankpa", entered), false, entered);
+  assert.equal(townMatches("", "Ankpa"), false);
+});
+
+test("delivery needs a state and town, but no street address", async () => {
+  const noStreet = await deliveryTo("kogi state", "Idah");
+  assert.equal(noStreet.status, 201, JSON.stringify(noStreet.body));
+  const order = await Order.findById(noStreet.body.data.orderId);
+  assert.equal(order.fulfillment, "delivery");
+  assert.equal(order.shippingAddress.state, "Kogi", "the state is stored in its exact spelling");
+  assert.equal(order.shippingAddress.city, "Idah");
+  assert.equal(order.shippingAddress.address, "", "the street/landmark line is optional");
+
+  const withLandmark = await deliveryTo("Lagos", "Ikeja", { address: "Near the motor park" });
+  assert.equal(withLandmark.status, 201);
+  assert.equal((await Order.findById(withLandmark.body.data.orderId)).shippingAddress.address, "Near the motor park");
+
+  for (const bad of [["Atlantis", "Idah"], ["", "Idah"], ["Kogi", ""], ["Kogi", "  "], [{ $ne: 1 }, "Idah"], ["Kogi", { a: 1 }]]) {
+    assert.equal((await deliveryTo(...bad)).status, 400, JSON.stringify(bad));
+  }
+  assert.equal((await deliveryTo("Kogi", "Idah", { address: { a: 1 } })).status, 400);
+  assert.equal((await deliveryTo("Kogi", "Idah", { address: "x".repeat(251) })).status, 400);
+});
+
+test("delivery is switched off for the towns the owner lists, and only those", async () => {
+  const set = await request("PATCH", settingsUrl, { pickupOnlyAreas: [{ state: "kogi state", town: " Ankpa " }, { state: "Kogi", town: "ankpa" }] }, admin);
+  assert.equal(set.status, 200, JSON.stringify(set.body));
+  assert.deepEqual((await Settings.getSettings()).pickupOnlyAreas.map(a => ({ state: a.state, town: a.town })), [{ state: "Kogi", town: "Ankpa" }], "stored once, with the exact state name");
+
+  for (const town of ["Ankpa", "ankpa", "Ankpa town", "ANKPA, Kogi"]) {
+    const response = await deliveryTo("Kogi", town);
+    assert.equal(response.status, 400, town);
+    assert.match(response.body.message, /do not deliver in Ankpa, Kogi.*pickup/i);
+  }
+  assert.equal((await deliveryTo("Kogi", "Idah")).status, 201, "other towns in the same state still get delivery");
+  assert.equal((await deliveryTo("Enugu", "Ankpa")).status, 201, "the rule is for that state's Ankpa only");
+  assert.equal((await deliveryTo("Kogi", "Ankparu")).status, 201, "a different town with a similar name is not caught");
+  const pickup = await request("POST", "/api/orders", {
+    items: pickupItems(), fulfillment: "pickup", shippingAddress: { fullName: "A", phone: "08011112222" },
+  }, alice);
+  assert.equal(pickup.status, 201, "everyone, including people in Ankpa, can collect");
+
+  await request("PATCH", settingsUrl, { pickupEnabled: false }, admin);
+  const noPickup = await deliveryTo("Kogi", "Ankpa");
+  assert.equal(noPickup.status, 400);
+  assert.match(noPickup.body.message, /cannot deliver to Ankpa, Kogi/i, "with pickup off there is nothing to suggest");
+});
+
+test("the list of pickup-only towns is public, admin-only to change, and validated", async () => {
+  const empty = await request("GET", "/api/store/delivery");
+  assert.equal(empty.status, 200);
+  assert.equal(empty.body.data.states.length, 37);
+  assert.ok(empty.body.data.states.includes("Kogi") && empty.body.data.states.includes("FCT (Abuja)"));
+  assert.deepEqual(empty.body.data.pickupOnlyAreas, []);
+
+  const body = { pickupOnlyAreas: [{ state: "Kogi", town: "Ankpa" }] };
+  assert.equal((await request("PATCH", settingsUrl, body)).status, 401);
+  assert.ok([401, 403].includes((await request("PATCH", settingsUrl, body, alice)).status));
+  assert.equal((await request("PATCH", settingsUrl, body, admin)).status, 200);
+  assert.deepEqual((await request("GET", "/api/store/delivery")).body.data.pickupOnlyAreas, [{ state: "Kogi", town: "Ankpa" }]);
+
+  for (const bad of ["Ankpa", {}, [{ state: "Atlantis", town: "Ankpa" }], [{ state: "Kogi", town: "A" }], [{ state: "Kogi", town: "x".repeat(81) }],
+    [{ state: "Kogi" }], [{ town: "Ankpa" }], [null], [{ state: { $ne: 1 }, town: "Ankpa" }], [{ state: "Kogi", town: { a: 1 } }],
+    Array.from({ length: 51 }, (_, i) => ({ state: "Kogi", town: "Town " + i }))]) {
+    assert.equal((await request("PATCH", settingsUrl, { pickupOnlyAreas: bad }, admin)).status, 400, JSON.stringify(bad).slice(0, 70));
+  }
+  assert.deepEqual((await request("GET", "/api/store/delivery")).body.data.pickupOnlyAreas, [{ state: "Kogi", town: "Ankpa" }], "refused changes leave the list alone");
+  assert.equal((await request("PATCH", settingsUrl, { pickupOnlyAreas: [] }, admin)).status, 200);
+  assert.deepEqual((await request("GET", "/api/store/delivery")).body.data.pickupOnlyAreas, []);
+});
+
 // ----- checkout and cross-site writes -----
 
 test("checkout requires a complete delivery address and stores it", async () => {
