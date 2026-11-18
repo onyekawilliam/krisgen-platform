@@ -7,7 +7,7 @@ function naira(n) {
   return "₦" + Number(n).toLocaleString("en-NG");
 }
 
-const emptyForm = { name: "", brand: "Tecno", model: "", ram: "", storage: "", costPrice: "", sellingPrice: "",  commissionRateOverride: "", stock: "" };
+const emptyForm = { name: "", brand: "Tecno", model: "", ram: "", storage: "", costPrice: "", sellingPrice: "",  commissionRateOverride: "", stock: "", specifications: {} };
 
 export default function AdminProducts() {
   const [products, setProducts] = useState([]);
@@ -32,6 +32,7 @@ export default function AdminProducts() {
     setForm({
       name: p.name, brand: p.brand, model: p.model, ram: p.ram || "", storage: p.storage || "",
       costPrice: p.costPrice, sellingPrice: p.sellingPrice, stock: p.stock, commissionRateOverride: p.commissionRateOverride ?? "",
+      specifications: { ...(p.specifications || {}) },
     });
   }
 
@@ -121,6 +122,10 @@ export default function AdminProducts() {
           <input className="input" placeholder="Model" required value={form.model} onChange={(e) => setForm({ ...form, model: e.target.value })} />
           <input className="input" placeholder="RAM (e.g. 8GB)" value={form.ram} onChange={(e) => setForm({ ...form, ram: e.target.value })} />
           <input className="input" placeholder="Storage (e.g. 256GB)" value={form.storage} onChange={(e) => setForm({ ...form, storage: e.target.value })} />
+          <input className="input" placeholder="Camera (e.g. 50MP)" value={form.specifications.camera || ""}
+            onChange={(e) => setForm({ ...form, specifications: { ...form.specifications, camera: e.target.value } })} />
+          <input className="input" placeholder="Battery (e.g. 5000mAh)" value={form.specifications.battery || ""}
+            onChange={(e) => setForm({ ...form, specifications: { ...form.specifications, battery: e.target.value } })} />
           <input className="input" type="number" placeholder="Cost price (admin only)" required value={form.costPrice} onChange={(e) => setForm({ ...form, costPrice: e.target.value })} />
           <input className="input" type="number" placeholder="Selling price" required value={form.sellingPrice} onChange={(e) => setForm({ ...form, sellingPrice: e.target.value })} />
           <input
@@ -183,6 +188,10 @@ export default function AdminProducts() {
               <td className="py-2.5 text-ink">
                 <span className={p.isActive === false ? "text-ink-dim" : ""}>{p.name}</span>
                 {p.isActive === false && <span className="badge badge-muted ml-2">Hidden from shop</span>}
+                {!(p.sellingPrice > 0) && <span className="badge badge-muted ml-2">Needs price</span>}
+                {(p.storage || p.ram) && (
+                  <span className="block text-xs text-ink-faint">{[p.storage, p.ram && `${p.ram} RAM`].filter(Boolean).join(" · ")}</span>
+                )}
               </td>
               <td className="py-2.5 text-ink-dim">{naira(p.costPrice)}</td>
               <td className="py-2.5 text-ink-dim">{naira(p.sellingPrice)}</td>

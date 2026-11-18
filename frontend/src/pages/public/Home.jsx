@@ -4,7 +4,7 @@ import api from "../../api/axios";
 import ProductCard from "../../components/ProductCard";
 import { onlinePayments, SHOP_PHONE, SHOP_WHATSAPP_DISPLAY, whatsappUrl } from "../../config";
 
-const brands = ["Tecno", "Infinix", "Itel", "Viva", "Samsung", "Redmi", "Realme"];
+const brands = ["Tecno", "Infinix", "Redmi", "Itel", "Samsung", "Viva", "Realme"];
 
 const perks = [
   {

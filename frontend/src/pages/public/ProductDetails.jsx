@@ -233,10 +233,11 @@ async function handleBuy() {
         </nav>
         <p className="eyebrow">{product.brand}</p>
         <h1 className="mt-2 font-display text-3xl font-bold tracking-tight md:text-4xl">{product.name}</h1>
-        <dl className="mt-5 grid grid-cols-3 gap-3">
+        <dl className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
           {product.ram && <div className="rounded-xl bg-navy-panel2 p-3"><dt className="text-[11px] uppercase tracking-wider text-ink-faint">RAM</dt><dd className="mt-1 font-mono text-sm">{product.ram}</dd></div>}
           {product.storage && <div className="rounded-xl bg-navy-panel2 p-3"><dt className="text-[11px] uppercase tracking-wider text-ink-faint">Storage</dt><dd className="mt-1 font-mono text-sm">{product.storage}</dd></div>}
           {product.specifications?.camera && <div className="rounded-xl bg-navy-panel2 p-3"><dt className="text-[11px] uppercase tracking-wider text-ink-faint">Camera</dt><dd className="mt-1 font-mono text-sm">{product.specifications.camera}</dd></div>}
+          {product.specifications?.battery && <div className="rounded-xl bg-navy-panel2 p-3"><dt className="text-[11px] uppercase tracking-wider text-ink-faint">Battery</dt><dd className="mt-1 font-mono text-sm">{product.specifications.battery}</dd></div>}
         </dl>
         {product.description && <p className="mt-5 text-sm leading-relaxed text-ink-dim">{product.description}</p>}
 

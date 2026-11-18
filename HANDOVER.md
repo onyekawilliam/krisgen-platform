@@ -60,8 +60,11 @@ settings pages.
   `https://krisgen-api.onrender.com/api/webhooks/flutterwave`. This makes sure a customer who pays and then closes
   the page still gets their order.
 - [ ] **Real products.** The shop currently shows **sample phones with sample prices and stock** (Tecno Camon 30 Pro,
-  Infinix Note 40 Pro, and so on). Open Admin → Products and replace each with your real phones, real prices and real
-  stock, then upload a photo for each.
+  Infinix Note 40 Pro, and so on). Your 30 phones are already listed in `backend/data/phones.csv`. Open it in Excel,
+  fill in Cost price, Selling price and Stock, save it as CSV, then from the `backend` folder run
+  `node scripts/importPhones.js --db krisgenDB --hide-samples` to preview, and the same with `--apply` added to save.
+  Phones with both prices go live; phones left without prices are added hidden and marked "Needs price" in
+  Admin → Products. Running it again never makes duplicates. Then upload a photo for each.
 - [ ] **Legal pages.** Have a Nigerian lawyer check the Terms, Privacy and Refunds pages and the referral
   programme. Then remove the "draft" notice (see the README, "Legal pages").
 - [ ] **A test purchase.** Make one real purchase of a cheap item, pay, close the page straight away, and confirm
