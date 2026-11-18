@@ -62,9 +62,9 @@ settings pages.
 - [ ] **Real products.** The shop currently shows **sample phones with sample prices and stock** (Tecno Camon 30 Pro,
   Infinix Note 40 Pro, and so on). Your 30 phones are already listed in `backend/data/phones.csv`. Open it in Excel,
   fill in Cost price, Selling price and Stock, save it as CSV, then from the `backend` folder run
-  `node scripts/importPhones.js --db krisgenDB --hide-samples` to preview, and the same with `--apply` added to save.
+  `node scripts/importPhones.js --db krisgenDB --remove-samples` to preview, and the same with `--apply` added to save.
   Phones with both prices go live; phones left without prices are added hidden and marked "Needs price" in
-  Admin → Products. Running it again never makes duplicates. Then upload a photo for each.
+  Admin → Products. `--remove-samples` deletes the 8 sample phones. Running it again never makes duplicates. Then upload a photo for each.
 - [ ] **Legal pages.** Have a Nigerian lawyer check the Terms, Privacy and Refunds pages and the referral
   programme. Then remove the "draft" notice (see the README, "Legal pages").
 - [ ] **A test purchase.** Make one real purchase of a cheap item, pay, close the page straight away, and confirm
@@ -77,6 +77,9 @@ settings pages.
 ## Everyday tasks
 
 - **Add or change a phone:** Admin → Products. Selling price must be above cost price. Cost price is private to you.
+- **Remove a phone:** Admin → Products. **Deactivate** hides it from the shop and can be undone with **Activate**.
+  **Delete** removes it and its photos for good. A phone that has ever been ordered cannot be deleted, only
+  deactivated, so your order and commission records stay complete.
 - **Phone photos:** each phone can have **one to five photos** (never more than five). In Admin → Products, edit the
   phone and use **Choose Files** (you can pick several at once). On a phone that already exists, photos save the moment
   you add them. For a brand-new phone they upload when you save it. The first photo is the **main** one customers see

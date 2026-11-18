@@ -4,6 +4,7 @@ const asyncHandler = require("../utils/asyncHandler");
 const { validStock, validRate } = require("../utils/numericIntegrity");
 const cloudinaryImages = require("../services/cloudinaryImageService");
 const Settings = require("../models/Settings");
+const { isInSalesHistory } = require("../utils/salesHistory");
 const { queryString, escapeRegExp } = require("../utils/inputGuards");
 
 const MAX_PHOTOS = 5;
@@ -168,6 +169,23 @@ exports.deactivateProduct = asyncHandler(async (req, res) => {
   product.isActive = false;
   await product.save();
   res.json({ success: true, message: "Product deactivated" });
+});
+
+// Deletes a phone for good, with its photos. A phone already sold is refused.
+exports.deleteProduct = asyncHandler(async (req, res) => {
+  const product = await Product.findById(req.params.id).select(imageFields);
+  if (!product) throw new ApiError(404, "Product not found");
+  if (await isInSalesHistory(product._id)) {
+    throw new ApiError(409, "This phone is in past orders, so it cannot be deleted. Use Deactivate to hide it from the shop.");
+  }
+
+  const photos = photoIds(product).map((id, i) => ({ id, url: product.images[i] }));
+  await Product.deleteOne({ _id: product._id });
+  let cleanupWarning = null;
+  for (const photo of photos) {
+    cleanupWarning = (await deleteCloudinaryImageIfUnused(photo.id, photo.url)) || cleanupWarning;
+  }
+  res.json({ success: true, message: "Product deleted", ...(cleanupWarning ? { warning: cleanupWarning } : {}) });
 });
 
 function validateProductImage(file) {

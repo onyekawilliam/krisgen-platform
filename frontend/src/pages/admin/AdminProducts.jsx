@@ -106,6 +106,21 @@ export default function AdminProducts() {
     }
   }
 
+  // Removes a phone and its photos for good. The server refuses phones already sold.
+  async function deletePhone(p) {
+    const label = [p.name, p.storage, p.ram && `${p.ram} RAM`].filter(Boolean).join(" ");
+    if (!window.confirm(`Delete ${label} for good?\n\nIts photos are deleted too. This cannot be undone.`)) return;
+    setListError("");
+    try {
+      const res = await api.delete(`/products/admin/${p._id}/permanent`);
+      if (res.data.warning) setListError(res.data.warning);
+      if (editing === p._id) setEditing(null);
+      load();
+    } catch (err) {
+      setListError(err.response?.data?.message || "Could not delete this phone. Please try again.");
+    }
+  }
+
   return (
     <div>
       <div className="flex justify-between items-center mb-5">
@@ -207,6 +222,12 @@ export default function AdminProducts() {
                   }`}
                 >
                   {p.isActive === false ? "Activate" : "Deactivate"}
+                </button>
+                <button
+                  onClick={() => deletePhone(p)}
+                  className="ml-1.5 text-xs border border-navy-line rounded-lg px-3 py-1.5 text-coral transition-colors hover:border-coral"
+                >
+                  Delete
                 </button>
               </td>
             </tr>

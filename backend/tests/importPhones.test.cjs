@@ -124,13 +124,25 @@ test("a priced phone the owner hid on purpose stays hidden when prices change", 
   assert.equal(a200.stock, 2, "blank stock leaves the stock alone");
 });
 
-test("--hide-samples hides only the starter sample phones", async () => {
+test("--remove-samples deletes the starter sample phones and nothing else", async () => {
   await Product.create({ name: "Itel S24", brand: "Itel", model: "S24", costPrice: 1, sellingPrice: 2 });
+  await Product.create({ name: "Viva V15 Lite", brand: "Viva", model: "V15 Lite", costPrice: 1, sellingPrice: 2, isActive: false });
   await Product.create({ name: "Itel A200", brand: "Itel", model: "A200", costPrice: 1, sellingPrice: 2 });
-  const preview = await importPhones([], { hideSamples: true });
-  assert.deepEqual(preview.samplesHidden, ["Itel S24"]);
-  assert.equal((await Product.findOne({ name: "Itel S24" })).isActive, true);
-  await importPhones([], { apply: true, hideSamples: true });
-  assert.equal((await Product.findOne({ name: "Itel S24" })).isActive, false);
-  assert.equal((await Product.findOne({ name: "Itel A200" })).isActive, true);
+  const preview = await importPhones([], { removeSamples: true });
+  assert.deepEqual(preview.samplesRemoved.sort(), ["Itel S24", "Viva V15 Lite"]);
+  assert.equal(await Product.countDocuments(), 3);
+  await importPhones([], { apply: true, removeSamples: true });
+  assert.deepEqual((await Product.find()).map((p) => p.name), ["Itel A200"]);
+});
+
+test("a sample that was sold, or has photos, is hidden instead of deleted", async () => {
+  const sold = await Product.create({ name: "Itel S24", brand: "Itel", model: "S24", costPrice: 1, sellingPrice: 2 });
+  await Product.create({ name: "Itel A70", brand: "Itel", model: "A70", costPrice: 1, sellingPrice: 2, images: ["https://res.cloudinary.com/x/a.png"] });
+  await mongoose.connection.collection("commissions").insertOne({ product: sold._id });
+  const report = await importPhones([], { apply: true, removeSamples: true });
+  assert.deepEqual(report.samplesRemoved, []);
+  assert.deepEqual(report.samplesHidden.sort(), ["Itel A70", "Itel S24"]);
+  assert.equal(await Product.countDocuments({ isActive: true }), 0);
+  assert.equal(await Product.countDocuments(), 2);
+  await mongoose.connection.collection("commissions").deleteMany({});
 });
