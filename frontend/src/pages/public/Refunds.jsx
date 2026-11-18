@@ -28,7 +28,7 @@ const sections = [
   },
   {
     heading: "How to reach us",
-    body: ["Call or WhatsApp 08035142589 and quote your order number, or use our contact page."],
+    body: ["Call 08035142589 or WhatsApp 07031548095 and quote your order number, or use our contact page."],
   },
 ];
 

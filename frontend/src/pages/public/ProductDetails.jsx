@@ -5,7 +5,7 @@ import { useAuth } from "../../context/AuthContext";
 import { useFlutterwave, closePaymentModal } from "flutterwave-react-v3";
 import ProductImage from "../../components/ProductImage";
 import { blockedArea } from "../../utils/delivery";
-import { onlinePayments, SHOP_PHONE, SHOP_WHATSAPP } from "../../config";
+import { onlinePayments, SHOP_PHONE, whatsappUrl } from "../../config";
 
 
 function naira(n) {
@@ -190,9 +190,9 @@ async function handleBuy() {
   }
   if (!product) return <div className="max-w-4xl mx-auto px-5 py-10 text-ink-dim">Loading…</div>;
 
-  const whatsappLink = `https://wa.me/${SHOP_WHATSAPP}?text=${encodeURIComponent(
+  const whatsappLink = whatsappUrl(
     `Hello Krisgen, I would like to order: ${product.name} (${naira(product.sellingPrice)}) x ${qty}. Please confirm it is available and how to pay.`
-  )}`;
+  );
 
   return (
     <div className="mx-auto grid max-w-6xl items-start gap-8 px-5 py-8 md:grid-cols-[1.05fr_1fr] md:gap-12 md:py-10">
@@ -392,8 +392,8 @@ async function handleBuy() {
           {onlinePayments && (
             <li className="flex items-center gap-2.5">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 text-mint" aria-hidden="true"><path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2z" /></svg>
-              Questions? <a href="tel:08035142589" className="text-gold-bright hover:underline">Call 08035142589</a> or{" "}
-              <a href="https://wa.me/2348035142589" target="_blank" rel="noopener noreferrer" className="text-gold-bright hover:underline">WhatsApp us</a>
+              Questions? <a href={`tel:${SHOP_PHONE}`} className="text-gold-bright hover:underline">Call {SHOP_PHONE}</a> or{" "}
+              <a href={whatsappUrl()} target="_blank" rel="noopener noreferrer" className="text-gold-bright hover:underline">WhatsApp us</a>
             </li>
           )}
         </ul>

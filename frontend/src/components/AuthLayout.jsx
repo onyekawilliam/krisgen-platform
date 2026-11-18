@@ -1,6 +1,6 @@
 // The shared frame for log in, register and password pages: a short brand panel
 // beside the form on wide screens, and just the form on a phone.
-import { onlinePayments } from "../config";
+import { onlinePayments, SHOP_PHONE, SHOP_WHATSAPP_DISPLAY } from "../config";
 
 const points = [
   "Genuine phones at dealer prices",
@@ -31,7 +31,8 @@ export default function AuthLayout({ children }) {
             </ul>
           </div>
           <p className="relative mt-10 text-xs text-brand-dim">
-            Need help? Call or WhatsApp <span className="font-medium text-brand-text">08035142589</span>
+            Need help? Call <span className="font-medium text-brand-text">{SHOP_PHONE}</span> or WhatsApp{" "}
+            <span className="font-medium text-brand-text">{SHOP_WHATSAPP_DISPLAY}</span>
           </p>
         </aside>
         <div className="bg-navy-panel p-7 sm:p-10">{children}</div>

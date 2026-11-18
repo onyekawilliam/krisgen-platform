@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { SHOP_PHONE, SHOP_WHATSAPP_DISPLAY, whatsappUrl } from "../config";
 
 const footerLink = "text-sm text-brand-dim transition-colors hover:text-brand-text";
 const heading = "mb-1 text-xs font-semibold uppercase tracking-[0.14em] text-brand-dim/80";
@@ -17,7 +18,7 @@ export default function Footer() {
               Genuine phones, dealer prices, honest commissions.
             </p>
             <a
-              href="https://wa.me/2348035142589"
+              href={whatsappUrl()}
               target="_blank"
               rel="noopener noreferrer"
               className="mt-5 inline-flex items-center gap-2 rounded-full bg-gold px-5 py-2.5 text-sm font-semibold text-brand transition hover:brightness-95"
@@ -43,8 +44,12 @@ export default function Footer() {
 
           <div className="flex flex-col gap-2.5">
             <h2 className={heading}>Talk to us</h2>
-            <a href="tel:08035142589" className="font-mono text-lg text-gold hover:brightness-110">08035142589</a>
-            <span className="text-sm text-brand-dim">Call &amp; WhatsApp</span>
+            <span className="text-sm text-brand-dim">Call</span>
+            <a href={`tel:${SHOP_PHONE}`} className="-mt-2 font-mono text-lg text-gold hover:brightness-110">{SHOP_PHONE}</a>
+            <span className="text-sm text-brand-dim">WhatsApp</span>
+            <a href={whatsappUrl()} target="_blank" rel="noopener noreferrer" className="-mt-2 font-mono text-lg text-gold hover:brightness-110">
+              {SHOP_WHATSAPP_DISPLAY}
+            </a>
             <Link to="/contact" className={footerLink}>Contact page</Link>
           </div>
         </div>
