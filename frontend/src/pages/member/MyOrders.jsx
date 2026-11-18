@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useFlutterwave, closePaymentModal } from "flutterwave-react-v3";
 import api from "../../api/axios";
+import { useConfirm } from "../../components/ConfirmDialog";
 import { useAuth } from "../../context/AuthContext";
 import StatusBadge, { orderStatusLabel } from "../../components/StatusBadge";
 
@@ -10,6 +11,7 @@ function naira(n) {
 }
 
 export default function MyOrders() {
+  const [confirm, confirmDialog] = useConfirm();
   const [orders, setOrders] = useState([]);
   const { user } = useAuth();
   const [selectedOrder, setSelectedOrder] = useState(null);
@@ -59,9 +61,12 @@ export default function MyOrders() {
   }
 
   async function cancelOrder(orderId) {
-    const confirmed = window.confirm(
-      "Are you sure you want to cancel this order?"
-    );
+    const confirmed = await confirm({
+      title: "Cancel this order?",
+      confirmLabel: "Cancel order",
+      cancelLabel: "Keep order",
+      danger: true,
+    });
 
     if (!confirmed) return;
 
@@ -139,6 +144,7 @@ export default function MyOrders() {
 
   return (
     <div>
+      {confirmDialog}
       <h1 className="page-title mb-1">My orders</h1>
       <p className="text-ink-dim text-sm mb-6">Every phone you've bought through Krisgen.</p>
       {error && (

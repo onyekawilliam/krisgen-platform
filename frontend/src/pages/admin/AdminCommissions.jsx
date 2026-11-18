@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import api from "../../api/axios";
+import { useConfirm } from "../../components/ConfirmDialog";
 import StatusBadge from "../../components/StatusBadge";
 
 function naira(n) {
@@ -31,7 +32,7 @@ function saleDate(commission) {
     .format(new Date(commission.order.createdAt));
 }
 
-function CommissionActions({ commission, updateStatus }) {
+function CommissionActions({ commission, updateStatus, confirm }) {
   return (
     <div className="flex flex-wrap gap-1.5">
       {commission.status === "pending" && (
@@ -39,7 +40,8 @@ function CommissionActions({ commission, updateStatus }) {
       )}
       {["pending", "approved"].includes(commission.status) && (
         <button
-          onClick={() => window.confirm("Reverse this commission? This cannot be undone.") && updateStatus(commission._id, "reversed")}
+          onClick={async () => (await confirm({ title: "Reverse this commission?", message: "This cannot be undone.", confirmLabel: "Reverse", danger: true }))
+            && updateStatus(commission._id, "reversed")}
           className="text-xs border border-navy-line rounded-lg px-3 py-1.5 transition-colors hover:border-coral hover:text-coral"
         >
           Reverse
@@ -50,6 +52,7 @@ function CommissionActions({ commission, updateStatus }) {
 }
 
 export default function AdminCommissions() {
+  const [confirm, confirmDialog] = useConfirm();
   const [commissions, setCommissions] = useState([]);
   const [filter, setFilter] = useState("");
   const [error, setError] = useState("");
@@ -76,6 +79,7 @@ export default function AdminCommissions() {
 
   return (
     <div>
+      {confirmDialog}
       <div className="flex justify-between items-center mb-5">
         <h1 className="page-title">Commissions</h1>
         <select className="input w-auto" value={filter} onChange={(e) => setFilter(e.target.value)}>
@@ -115,7 +119,7 @@ export default function AdminCommissions() {
                 <td className="py-2.5 pr-3 text-ink-dim">{c.commissionRate}%</td>
                 <td className="py-2.5 pr-3 text-ink font-medium whitespace-nowrap">{naira(c.commissionAmount)}</td>
                 <td className="py-2.5 pr-3"><StatusBadge status={c.status} /></td>
-                <td className="py-2.5"><CommissionActions commission={c} updateStatus={updateStatus} /></td>
+                <td className="py-2.5"><CommissionActions commission={c} updateStatus={updateStatus} confirm={confirm} /></td>
               </tr>
             ))}
           </tbody>
@@ -141,7 +145,7 @@ export default function AdminCommissions() {
               <div><dt className="text-xs text-ink-faint">Gross profit</dt><dd className="text-ink-dim">{naira(c.grossProfitSnapshot)}</dd></div>
               <div><dt className="text-xs text-ink-faint">Rate / amount</dt><dd className="text-ink">{c.commissionRate}% · {naira(c.commissionAmount)}</dd></div>
             </dl>
-            <div className="mt-4"><CommissionActions commission={c} updateStatus={updateStatus} /></div>
+            <div className="mt-4"><CommissionActions commission={c} updateStatus={updateStatus} confirm={confirm} /></div>
           </article>
         ))}
       </div>

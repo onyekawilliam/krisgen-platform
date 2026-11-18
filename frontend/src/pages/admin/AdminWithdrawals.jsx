@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import api from "../../api/axios";
+import { useConfirm } from "../../components/ConfirmDialog";
 import StatusBadge from "../../components/StatusBadge";
 
 function naira(n) {
@@ -7,6 +8,7 @@ function naira(n) {
 }
 
 export default function AdminWithdrawals() {
+  const [confirm, confirmDialog] = useConfirm();
   const [withdrawals, setWithdrawals] = useState([]);
   const [filter, setFilter] = useState("");
   const [error, setError] = useState("");
@@ -19,8 +21,8 @@ export default function AdminWithdrawals() {
   }
   useEffect(load, [filter]);
 
-  async function updateStatus(id, status, confirmText) {
-    if (confirmText && !window.confirm(confirmText)) return;
+  async function updateStatus(id, status, confirmation) {
+    if (confirmation && !(await confirm(confirmation))) return;
     setError("");
     try {
       await api.patch(`/withdrawals/admin/${id}`, { status });
@@ -32,6 +34,7 @@ export default function AdminWithdrawals() {
 
   return (
     <div>
+      {confirmDialog}
       <div className="flex justify-between items-center mb-5">
         <h1 className="page-title">Withdrawals</h1>
         <select className="input w-auto" value={filter} onChange={(e) => setFilter(e.target.value)}>
@@ -62,14 +65,14 @@ export default function AdminWithdrawals() {
                 {w.status === "pending" && (
                   <>
                     <button onClick={() => updateStatus(w._id, "approved")} className="text-xs border border-navy-line rounded-lg px-3 py-1.5 transition-colors mr-1.5 hover:border-teal">Approve</button>
-                    <button onClick={() => updateStatus(w._id, "rejected", "Reject this withdrawal? The amount returns to the member's balance.")} className="text-xs border border-navy-line rounded-lg px-3 py-1.5 transition-colors hover:border-coral hover:text-coral">Reject</button>
+                    <button onClick={() => updateStatus(w._id, "rejected", { title: "Reject this withdrawal?", message: "The amount returns to the member's balance.", confirmLabel: "Reject", danger: true })} className="text-xs border border-navy-line rounded-lg px-3 py-1.5 transition-colors hover:border-coral hover:text-coral">Reject</button>
                   </>
                 )}
                 {w.status === "approved" && (
-                  <button onClick={() => updateStatus(w._id, "paid", "Confirm you have transferred this amount to the member's bank account. A paid withdrawal cannot be undone.")} className="text-xs border border-navy-line rounded-lg px-3 py-1.5 transition-colors hover:border-gold">Mark paid</button>
+                  <button onClick={() => updateStatus(w._id, "paid", { title: "Mark this withdrawal as paid?", message: "Confirm you have transferred this amount to the member's bank account. A paid withdrawal cannot be undone.", confirmLabel: "Yes, it is paid" })} className="text-xs border border-navy-line rounded-lg px-3 py-1.5 transition-colors hover:border-gold">Mark paid</button>
                 )}
                 {w.status === "approved" && (
-                  <button onClick={() => updateStatus(w._id, "rejected", "Reject this approved withdrawal? Only do this if no money has been sent.")} className="text-xs border border-navy-line rounded-lg px-3 py-1.5 transition-colors ml-1.5 hover:border-coral hover:text-coral">Reject</button>
+                  <button onClick={() => updateStatus(w._id, "rejected", { title: "Reject this approved withdrawal?", message: "Only do this if no money has been sent.", confirmLabel: "Reject", danger: true })} className="text-xs border border-navy-line rounded-lg px-3 py-1.5 transition-colors ml-1.5 hover:border-coral hover:text-coral">Reject</button>
                 )}
               </td>
             </tr>
