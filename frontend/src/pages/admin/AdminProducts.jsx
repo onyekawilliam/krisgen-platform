@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import api from "../../api/axios";
+import { useConfirm } from "../../components/ConfirmDialog";
 import ProductImage from "../../components/ProductImage";
 import PhotoManager from "../../components/PhotoManager";
 
@@ -10,6 +11,7 @@ function naira(n) {
 const emptyForm = { name: "", brand: "Tecno", model: "", ram: "", storage: "", costPrice: "", sellingPrice: "",  commissionRateOverride: "", stock: "", specifications: {} };
 
 export default function AdminProducts() {
+  const [confirm, confirmDialog] = useConfirm();
   const [products, setProducts] = useState([]);
   const [editing, setEditing] = useState(null); // product being edited, or "new"
   const [form, setForm] = useState(emptyForm);
@@ -109,7 +111,13 @@ export default function AdminProducts() {
   // Removes a phone and its photos for good. The server refuses phones already sold.
   async function deletePhone(p) {
     const label = [p.name, p.storage, p.ram && `${p.ram} RAM`].filter(Boolean).join(" ");
-    if (!window.confirm(`Delete ${label} for good?\n\nIts photos are deleted too. This cannot be undone.`)) return;
+    const ok = await confirm({
+      title: `Delete ${label}?`,
+      message: "It is removed from the shop for good, with its photos. This cannot be undone.",
+      confirmLabel: "Delete phone",
+      danger: true,
+    });
+    if (!ok) return;
     setListError("");
     try {
       const res = await api.delete(`/products/admin/${p._id}/permanent`);
@@ -123,6 +131,7 @@ export default function AdminProducts() {
 
   return (
     <div>
+      {confirmDialog}
       <div className="flex justify-between items-center mb-5">
         <h1 className="page-title">Products</h1>
         <button onClick={startNew} className="btn-primary text-sm py-2 px-4">+ Add new phone</button>

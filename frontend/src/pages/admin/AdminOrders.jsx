@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import api from "../../api/axios";
+import { useConfirm } from "../../components/ConfirmDialog";
 import StatusBadge, { orderStatusLabel } from "../../components/StatusBadge";
 
 function naira(n) {
@@ -17,6 +18,7 @@ function readPendingSale() {
 }
 
 export default function AdminOrders() {
+  const [confirm, confirmDialog] = useConfirm();
   const [orders, setOrders] = useState([]);
   const [paymentReviews, setPaymentReviews] = useState([]);
   const [reviewError, setReviewError] = useState("");
@@ -134,6 +136,7 @@ export default function AdminOrders() {
 
   return (
     <div>
+      {confirmDialog}
       <div className="flex justify-between items-center mb-5">
         <h1 className="page-title">Orders</h1>
 
@@ -452,7 +455,7 @@ export default function AdminOrders() {
                   <button onClick={() => updateStatus(o._id, "delivered")} className="text-xs border border-navy-line rounded-lg px-3 py-1.5 transition-colors mr-1.5 hover:border-teal">{o.fulfillment === "pickup" ? "Mark collected" : "Mark delivered"}</button>
                 )}
                 {["paid", "processing"].includes(o.status) && (
-                  <button onClick={() => window.confirm("Cancel this paid order? Its commissions are cancelled too, and any refund must be sent by you in Flutterwave.") && updateStatus(o._id, "cancelled")} className="text-xs border border-navy-line rounded-lg px-3 py-1.5 transition-colors hover:border-coral hover:text-coral">Cancel</button>
+                  <button onClick={async () => (await confirm({ title: "Cancel this paid order?", message: "Its commissions are cancelled too, and any refund must be sent by you in Flutterwave.", confirmLabel: "Cancel order", cancelLabel: "Keep order", danger: true })) && updateStatus(o._id, "cancelled")} className="text-xs border border-navy-line rounded-lg px-3 py-1.5 transition-colors hover:border-coral hover:text-coral">Cancel</button>
                 )}
               </td>
             </tr>
