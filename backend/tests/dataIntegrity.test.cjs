@@ -681,3 +681,36 @@ test("admin commission list traces registered and walk-in commissions to their s
   assert.equal(walkInOverride.commissionRate, 5);
   assert.equal(walkInOverride.commissionAmount, 2500);
 });
+
+// ----- deleting a phone for good -----
+
+test("an admin can delete an unsold phone for good, and its photos are removed from Cloudinary", async () => {
+  await withCloudinary(async (calls) => {
+    assert.equal((await uploadImage(productPath() + "/images")).status, 201);
+    assert.equal((await uploadImage(productPath() + "/images")).status, 201);
+    const response = await adminCall("DELETE", productPath() + "/permanent");
+    assert.equal(response.status, 200, JSON.stringify(response.body));
+    assert.equal(await Product.exists({ _id: product._id }), null);
+    assert.deepEqual(calls.deleted.sort(), ["krisgen/products/photo1", "krisgen/products/photo2"]);
+  });
+});
+
+test("a phone that has been sold cannot be deleted, only hidden", async () => {
+  await recordInStoreSale({ idempotencyKey: "delete-guard-sale", customerName: "Walk In", customerPhone: "08012345678",
+    productId: String(product._id), quantity: 1, paymentMethod: "cash" }, admin._id);
+  const response = await adminCall("DELETE", productPath() + "/permanent");
+  assert.equal(response.status, 409);
+  assert.match(response.body.message, /past orders.*Deactivate/);
+  assert.ok(await Product.exists({ _id: product._id }));
+  assert.equal(await Order.countDocuments({ "items.product": product._id }), 1);
+});
+
+test("deleting needs an admin and a real phone", async () => {
+  const customer = await member("Shopper");
+  const asCustomer = await fetch(baseUrl + productPath() + "/permanent", { method: "DELETE",
+    headers: { Authorization: "Bearer " + jwt.sign({ id: String(customer._id) }, process.env.JWT_SECRET) } });
+  assert.equal(asCustomer.status, 403);
+  assert.equal((await fetch(baseUrl + productPath() + "/permanent", { method: "DELETE" })).status, 401);
+  assert.ok(await Product.exists({ _id: product._id }));
+  assert.equal((await adminCall("DELETE", "/api/products/admin/" + new mongoose.Types.ObjectId() + "/permanent")).status, 404);
+});

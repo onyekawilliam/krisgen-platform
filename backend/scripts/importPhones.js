@@ -1,8 +1,8 @@
 // Adds the shop's phones from a spreadsheet (data/phones.csv) in one go.
 //
 //   PowerShell, from the backend folder:
-//     node scripts/importPhones.js --db krisgenDB            (preview only, changes nothing)
-//     node scripts/importPhones.js --db krisgenDB --apply    (saves the phones)
+//     node scripts/importPhones.js --db krisgenDB --remove-samples            (preview only, changes nothing)
+//     node scripts/importPhones.js --db krisgenDB --remove-samples --apply    (saves the changes)
 //
 // Open data/phones.csv in Excel, fill in Cost price, Selling price and Stock, and
 // save it as CSV. A phone with both prices goes live in the shop; one with blank
@@ -13,13 +13,16 @@
 // storage and RAM) is never added twice. If its row now has prices, the prices,
 // stock, camera and battery are updated. Nothing is ever deleted.
 //
-// Add --hide-samples to also hide the sample phones the site started with.
+// --remove-samples deletes the 8 sample phones the site started with. A sample
+// that was ever ordered, or has photos, is hidden instead (delete it in Admin ->
+// Products, which also removes its photos).
 // It reads MONGO_URI from backend/.env, like setAdminPassword.js.
 require("dotenv").config();
 const fs = require("fs");
 const path = require("path");
 const mongoose = require("mongoose");
 const Product = require("../models/Product");
+const { isInSalesHistory } = require("../utils/salesHistory");
 
 const BRANDS = Product.schema.path("brand").enumValues;
 const SAMPLE_NAMES = ["Tecno Camon 30 Pro", "Tecno Spark 20", "Infinix Note 40 Pro", "Infinix Hot 40i", "Itel S24",
@@ -108,8 +111,8 @@ const sameText = (value) => new RegExp(`^${(value || "").replace(/[.*+?^${}()|[\
 const label = (p) => [p.name, p.storage, p.ram && `${p.ram} RAM`].filter(Boolean).join(" ");
 
 // Works out (and with apply: true, makes) the changes. Returns what happened.
-async function importPhones(phones, { apply = false, hideSamples = false } = {}) {
-  const report = { added: [], addedHidden: [], updated: [], unchanged: [], samplesHidden: [] };
+async function importPhones(phones, { apply = false, removeSamples = false } = {}) {
+  const report = { added: [], addedHidden: [], updated: [], unchanged: [], samplesRemoved: [], samplesHidden: [] };
 
   for (const p of phones) {
     const existing = await Product.findOne({
@@ -145,11 +148,16 @@ async function importPhones(phones, { apply = false, hideSamples = false } = {})
     }
   }
 
-  if (hideSamples) {
-    const samples = await Product.find({ name: { $in: SAMPLE_NAMES }, isActive: true });
-    for (const s of samples) {
-      if (apply) { s.isActive = false; await s.save(); }
-      report.samplesHidden.push(s.name);
+  if (removeSamples) {
+    for (const s of await Product.find({ name: { $in: SAMPLE_NAMES } })) {
+      if (s.images?.length || await isInSalesHistory(s._id)) {
+        if (!s.isActive) continue;
+        if (apply) { s.isActive = false; await s.save(); }
+        report.samplesHidden.push(s.name);
+      } else {
+        if (apply) await Product.deleteOne({ _id: s._id });
+        report.samplesRemoved.push(s.name);
+      }
     }
   }
   return report;
@@ -166,13 +174,17 @@ function printReport(report, apply) {
   section(`${apply ? "Added" : "Would add"} hidden, waiting for prices`, report.addedHidden);
   section(`${apply ? "Updated" : "Would update"} prices and stock`, report.updated);
   section("Already in the shop, left as they are", report.unchanged);
-  section(`Sample phones ${will}hidden`, report.samplesHidden);
+  section(`Sample phones ${will}deleted`, report.samplesRemoved);
+  section(`Sample phones ${will}hidden (ordered before or has photos, so not deleted)`, report.samplesHidden);
   console.log(apply ? "\nDone." : "\nNothing was changed. Run again with --apply to save these changes.");
 }
 
 async function main() {
   const arg = (name) => { const i = process.argv.indexOf(name); return i > -1 ? process.argv[i + 1] : undefined; };
   const apply = process.argv.includes("--apply");
+  const known = new Set(["--apply", "--remove-samples", "--db", "--file"]);
+  const unknown = process.argv.slice(2).filter((a, i, all) => a.startsWith("--") && !known.has(a) && !["--db", "--file"].includes(all[i - 1]));
+  if (unknown.length) throw new Error(`Unknown option ${unknown.join(", ")}. Use --apply, --remove-samples, --db or --file.`);
   const file = path.resolve(arg("--file") || path.join(__dirname, "..", "data", "phones.csv"));
   const { phones, problems } = readPhones(fs.readFileSync(file, "utf8"));
   if (problems.length) {
@@ -186,7 +198,7 @@ async function main() {
   await mongoose.connect(process.env.MONGO_URI, dbName ? { dbName } : {});
   console.log(`Connected to database: ${mongoose.connection.name}`);
   try {
-    printReport(await importPhones(phones, { apply, hideSamples: process.argv.includes("--hide-samples") }), apply);
+    printReport(await importPhones(phones, { apply, removeSamples: process.argv.includes("--remove-samples") }), apply);
   } finally {
     await mongoose.disconnect();
   }
