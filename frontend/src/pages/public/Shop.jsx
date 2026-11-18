@@ -3,7 +3,7 @@ import { Link, useSearchParams } from "react-router-dom";
 import api from "../../api/axios";
 import ProductCard from "../../components/ProductCard";
 
-const BRANDS = ["All", "Tecno", "Infinix", "Itel", "Viva", "Samsung", "Redmi", "Realme", "Other"];
+const BRANDS = ["All", "Tecno", "Infinix", "Redmi", "Itel", "Samsung", "Viva", "Realme", "Other"];
 const SORTS = [
   { value: "newest", label: "Newest first" },
   { value: "price_asc", label: "Price: low to high" },

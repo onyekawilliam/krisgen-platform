@@ -11,7 +11,7 @@ const links = [
   { to: "/contact", label: "Contact" },
 ];
 
-const brands = ["Tecno", "Infinix", "Itel", "Viva", "Samsung", "Redmi", "Realme"];
+const brands = ["Tecno", "Infinix", "Redmi", "Itel", "Samsung", "Viva", "Realme"];
 
 const stripLink = ({ isActive }) =>
   `relative whitespace-nowrap py-3 text-sm font-medium transition-colors ${
