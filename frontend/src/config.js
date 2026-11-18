@@ -6,5 +6,9 @@
 // button that cannot work, and switches itself to online payment when the key appears.
 export const onlinePayments = Boolean(import.meta.env.VITE_FLW_PUBLIC_KEY);
 
+// Calls go to SHOP_PHONE; WhatsApp is a separate line.
 export const SHOP_PHONE = "08035142589";
-export const SHOP_WHATSAPP = "2348035142589";
+export const SHOP_WHATSAPP_DISPLAY = "07031548095";
+export const SHOP_WHATSAPP = "2347031548095"; // international form for wa.me links
+export const whatsappUrl = (text) =>
+  `https://wa.me/${SHOP_WHATSAPP}${text ? `?text=${encodeURIComponent(text)}` : ""}`;

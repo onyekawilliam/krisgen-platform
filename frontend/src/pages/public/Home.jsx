@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import api from "../../api/axios";
 import ProductCard from "../../components/ProductCard";
-import { onlinePayments } from "../../config";
+import { onlinePayments, SHOP_PHONE, SHOP_WHATSAPP_DISPLAY, whatsappUrl } from "../../config";
 
 const brands = ["Tecno", "Infinix", "Itel", "Viva", "Samsung", "Redmi", "Realme"];
 
@@ -82,7 +82,7 @@ export default function Home() {
                   How referrals work
                 </Link>
               </div>
-              <p className="mt-5 text-sm text-brand-dim">{onlinePayments ? "Pay by card, bank transfer or USSD." : "Order by call or WhatsApp on 08035142589."}</p>
+              <p className="mt-5 text-sm text-brand-dim">{onlinePayments ? "Pay by card, bank transfer or USSD." : `Call ${SHOP_PHONE} or WhatsApp ${SHOP_WHATSAPP_DISPLAY} to order.`}</p>
             </div>
 
             <div aria-hidden="true" className="relative mx-auto h-64 w-full max-w-sm md:h-[22rem]">
@@ -199,8 +199,8 @@ export default function Home() {
             <p className="mt-1.5 text-sm text-ink-dim">Call or WhatsApp us and we will help you pick the right one.</p>
           </div>
           <div className="flex flex-wrap gap-3">
-            <a href="tel:08035142589" className="btn-outline">Call 08035142589</a>
-            <a href="https://wa.me/2348035142589" target="_blank" rel="noopener noreferrer" className="btn-primary">WhatsApp us</a>
+            <a href={`tel:${SHOP_PHONE}`} className="btn-outline">Call {SHOP_PHONE}</a>
+            <a href={whatsappUrl()} target="_blank" rel="noopener noreferrer" className="btn-primary">WhatsApp us</a>
           </div>
         </div>
       </section>

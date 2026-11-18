@@ -59,7 +59,7 @@ const sections = [
   },
   {
     heading: "Contact",
-    body: ["Questions about these terms: call or WhatsApp 08035142589, or use our contact page."],
+    body: ["Questions about these terms: call 08035142589 or WhatsApp 07031548095, or use our contact page."],
   },
 ];
 

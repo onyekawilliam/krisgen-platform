@@ -1,6 +1,5 @@
 import { useState } from "react";
-
-const WHATSAPP_NUMBER = "2348035142589";
+import { SHOP_PHONE, SHOP_WHATSAPP_DISPLAY, whatsappUrl } from "../../config";
 
 export default function Contact() {
   const [form, setForm] = useState({ name: "", phone: "", message: "" });
@@ -13,7 +12,7 @@ export default function Contact() {
     const text = `Hello Krisgen, my name is ${form.name.trim()} (${form.phone.trim()}).
 
 ${form.message.trim()}`;
-    window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(text)}`, "_blank", "noopener,noreferrer");
+    window.open(whatsappUrl(text), "_blank", "noopener,noreferrer");
     setOpened(true);
     setForm({ name: "", phone: "", message: "" });
   }
@@ -26,10 +25,19 @@ ${form.message.trim()}`;
         <p className="mb-6 text-ink-dim">
           Questions about a phone, an order, or the affiliate program — reach us directly.
         </p>
-        <div className="mb-5 font-mono text-2xl text-gold-bright">08035142589</div>
+        <dl className="mb-5 grid gap-3">
+          <div>
+            <dt className="text-sm text-ink-dim">Call</dt>
+            <dd className="font-mono text-2xl text-gold-bright">{SHOP_PHONE}</dd>
+          </div>
+          <div>
+            <dt className="text-sm text-ink-dim">WhatsApp</dt>
+            <dd className="font-mono text-2xl text-gold-bright">{SHOP_WHATSAPP_DISPLAY}</dd>
+          </div>
+        </dl>
         <div className="flex gap-3">
-          <a href="tel:08035142589" className="btn-outline px-5 py-2.5 text-sm">Call now</a>
-          <a href={`https://wa.me/${WHATSAPP_NUMBER}`} target="_blank" rel="noopener noreferrer" className="btn-outline px-5 py-2.5 text-sm">
+          <a href={`tel:${SHOP_PHONE}`} className="btn-outline px-5 py-2.5 text-sm">Call now</a>
+          <a href={whatsappUrl()} target="_blank" rel="noopener noreferrer" className="btn-outline px-5 py-2.5 text-sm">
             WhatsApp us
           </a>
         </div>

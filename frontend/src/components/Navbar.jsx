@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Link, NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import ThemeToggle from "./ThemeToggle";
-import { onlinePayments } from "../config";
+import { onlinePayments, SHOP_PHONE, SHOP_WHATSAPP_DISPLAY, whatsappUrl } from "../config";
 
 const links = [
   { to: "/shop", label: "Phones" },
@@ -78,9 +78,12 @@ export default function Navbar() {
             {onlinePayments ? "Genuine phones at dealer prices · Pay by card, bank transfer or USSD" : "Genuine phones at dealer prices · Order by call or WhatsApp"}
           </span>
           <span className="sm:hidden">{onlinePayments ? "Pay by card, transfer or USSD" : "Order by call or WhatsApp"}</span>
-          <a href="tel:08035142589" className="whitespace-nowrap font-medium text-brand-text hover:text-gold">
-            Call or WhatsApp 08035142589
-          </a>
+          <div className="flex items-center gap-4 whitespace-nowrap font-medium text-brand-text">
+            <a href={`tel:${SHOP_PHONE}`} className="hover:text-gold">Call {SHOP_PHONE}</a>
+            <a href={whatsappUrl()} target="_blank" rel="noopener noreferrer" className="hidden hover:text-gold sm:inline">
+              WhatsApp {SHOP_WHATSAPP_DISPLAY}
+            </a>
+          </div>
         </div>
       </div>
 

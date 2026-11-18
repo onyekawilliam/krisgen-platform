@@ -50,7 +50,7 @@ const sections = [
   {
     heading: "Contact and changes",
     body: [
-      "To use your rights or ask a question, call or WhatsApp 08035142589, or use our contact page. We may update this policy and will change the date at the top when we do.",
+      "To use your rights or ask a question, call 08035142589 or WhatsApp 07031548095, or use our contact page. We may update this policy and will change the date at the top when we do.",
     ],
   },
 ];
