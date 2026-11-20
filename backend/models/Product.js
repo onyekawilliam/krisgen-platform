@@ -17,6 +17,10 @@ const productSchema = new mongoose.Schema(
     // The Cloudinary ID of each photo, in the same order as `images` (null for a
     // photo that was not uploaded through the admin). Never sent to customers.
     imagePublicIds: { type: [String], select: false, default: [] },
+    // Short videos of the phone (up to three), shown on its page after the photos.
+    videos: [{ type: String }],
+    // The Cloudinary ID of each video, in the same order. Never sent to customers.
+    videoPublicIds: { type: [String], select: false, default: [] },
 
     ram: { type: String },
     storage: { type: String },

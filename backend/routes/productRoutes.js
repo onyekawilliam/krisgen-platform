@@ -3,6 +3,7 @@ const router = express.Router();
 const ctrl = require("../controllers/productController");
 const { protect, adminOnly } = require("../middlewares/auth");
 const productImageUpload = require("../middlewares/productImageUpload");
+const productVideoUpload = require("../middlewares/productVideoUpload");
 
 router.get("/", ctrl.listProducts);
 router.get("/:id", ctrl.getProduct);
@@ -16,5 +17,7 @@ router.delete("/admin/:id/permanent", protect, adminOnly, ctrl.deleteProduct);
 router.post("/admin/:id/images", protect, adminOnly, productImageUpload, ctrl.addProductPhoto);
 router.delete("/admin/:id/images/:index", protect, adminOnly, ctrl.deleteProductPhoto);
 router.post("/admin/:id/images/:index/primary", protect, adminOnly, ctrl.makePrimaryPhoto);
+router.post("/admin/:id/videos", protect, adminOnly, productVideoUpload, ctrl.addProductVideo);
+router.delete("/admin/:id/videos/:index", protect, adminOnly, ctrl.deleteProductVideo);
 
 module.exports = router;

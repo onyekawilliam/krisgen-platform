@@ -3,6 +3,7 @@ import api from "../../api/axios";
 import { useConfirm } from "../../components/ConfirmDialog";
 import ProductImage from "../../components/ProductImage";
 import PhotoManager from "../../components/PhotoManager";
+import VideoManager from "../../components/VideoManager";
 
 function naira(n) {
   return "₦" + Number(n).toLocaleString("en-NG");
@@ -18,6 +19,7 @@ export default function AdminProducts() {
   const [error, setError] = useState("");
   const [photos, setPhotos] = useState([]); // photos already saved on the phone being edited
   const [queued, setQueued] = useState([]); // photos chosen for a new phone, uploaded after it is saved
+  const [videos, setVideos] = useState([]); // videos saved on the phone being edited
   const [saving, setSaving] = useState(false);
   const [listError, setListError] = useState("");
 
@@ -30,6 +32,7 @@ export default function AdminProducts() {
     setEditing(p._id);
     setError("");
     setPhotos(p.images || []);
+    setVideos(p.videos || []);
     setQueued([]);
     setForm({
       name: p.name, brand: p.brand, model: p.model, ram: p.ram || "", storage: p.storage || "",
@@ -42,6 +45,7 @@ export default function AdminProducts() {
     setEditing("new");
     setError("");
     setPhotos([]);
+    setVideos([]);
     setQueued([]);
     setForm(emptyForm);
   }
@@ -108,12 +112,12 @@ export default function AdminProducts() {
     }
   }
 
-  // Removes a phone and its photos for good. The server refuses phones already sold.
+  // Removes a phone and its photos and videos for good. The server refuses phones already sold.
   async function deletePhone(p) {
     const label = [p.name, p.storage, p.ram && `${p.ram} RAM`].filter(Boolean).join(" ");
     const ok = await confirm({
       title: `Delete ${label}?`,
-      message: "It is removed from the shop for good, with its photos. This cannot be undone.",
+      message: "It is removed from the shop for good, with its photos and videos. This cannot be undone.",
       confirmLabel: "Delete phone",
       danger: true,
     });
@@ -172,6 +176,12 @@ export default function AdminProducts() {
             onPhotosChange={(next) => { setPhotos(next); load(); }}
             queued={queued}
             onQueuedChange={setQueued}
+          />
+          <VideoManager
+            productId={editing}
+            name={form.name}
+            videos={videos}
+            onVideosChange={(next) => { setVideos(next); load(); }}
           />
           {error && <p className="text-coral text-sm col-span-2">{error}</p>}
           <div className="col-span-2 flex gap-2">

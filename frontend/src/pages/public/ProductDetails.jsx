@@ -4,6 +4,7 @@ import api from "../../api/axios";
 import { useAuth } from "../../context/AuthContext";
 import { useFlutterwave, closePaymentModal } from "flutterwave-react-v3";
 import ProductImage from "../../components/ProductImage";
+import ProductVideo, { VideoThumb } from "../../components/ProductVideo";
 import { blockedArea } from "../../utils/delivery";
 import { onlinePayments, SHOP_PHONE, whatsappUrl, BUSINESS_NAME } from "../../config";
 
@@ -179,6 +180,18 @@ async function handleBuy() {
 }
 
   const photos = product?.images || [];
+  // Photos first, then videos, in one strip of thumbnails.
+  const media = [
+    ...photos.map((url) => ({ type: "photo", url })),
+    ...(product?.videos || []).map((url) => ({ type: "video", url })),
+  ];
+  const active = media[activePhoto] || media[0];
+  const label = (item) => {
+    const kind = item.type === "video" ? "video" : "photo";
+    const list = media.filter((m) => m.type === item.type);
+    const n = list.indexOf(item) + 1;
+    return list.length > 1 ? `${kind} ${n} of ${list.length}` : kind;
+  };
 
   if (loadError) {
     return (
@@ -198,27 +211,33 @@ async function handleBuy() {
     <div className="mx-auto grid max-w-6xl items-start gap-8 px-5 py-8 md:grid-cols-[1.05fr_1fr] md:gap-12 md:py-10">
       <div className="md:sticky md:top-32">
         <div className="card aspect-square overflow-hidden bg-navy-panel2 p-0">
-          <ProductImage
-            src={product.images?.[activePhoto] || product.images?.[0]}
-            alt={photos.length > 1 ? `${product.name}, photo ${activePhoto + 1} of ${photos.length}` : product.name}
-            width={1200}
-            className="h-full w-full object-contain"
-          />
+          {active?.type === "video" ? (
+            <ProductVideo src={active.url} title={`${product.name}, ${label(active)}`} className="h-full w-full object-contain" />
+          ) : (
+            <ProductImage
+              src={active?.url}
+              alt={photos.length > 1 ? `${product.name}, ${label(active)}` : product.name}
+              width={1200}
+              className="h-full w-full object-contain"
+            />
+          )}
         </div>
-        {photos.length > 1 && (
-          <ul className="mt-3 flex gap-2.5" aria-label="Photos">
-            {photos.map((url, i) => (
-              <li key={url} className="w-1/5 max-w-[88px]">
+        {media.length > 1 && (
+          <ul className="mt-3 flex flex-wrap gap-2.5" aria-label="Photos and videos">
+            {media.map((item, i) => (
+              <li key={item.url} className="w-[calc(20%-0.5rem)] max-w-[88px]">
                 <button
                   type="button"
                   onClick={() => setActivePhoto(i)}
-                  aria-label={`Show photo ${i + 1} of ${photos.length}`}
+                  aria-label={`Show ${label(item)}`}
                   aria-current={i === activePhoto}
                   className={`block aspect-square w-full overflow-hidden rounded-xl border-2 bg-navy-panel2 transition ${
                     i === activePhoto ? "border-gold" : "border-transparent hover:border-navy-line"
                   }`}
                 >
-                  <ProductImage src={url} alt="" width={200} className="h-full w-full object-contain" />
+                  {item.type === "video"
+                    ? <VideoThumb src={item.url} className="h-full w-full" />
+                    : <ProductImage src={item.url} alt="" width={200} className="h-full w-full object-contain" />}
                 </button>
               </li>
             ))}

@@ -8,7 +8,9 @@ const { isInSalesHistory } = require("../utils/salesHistory");
 const { queryString, escapeRegExp } = require("../utils/inputGuards");
 
 const MAX_PHOTOS = 5;
-const imageFields = "+imagePublicIds +imagePublicId";
+const MAX_VIDEOS = 3;
+const { MAX_VIDEO_MB } = require("../middlewares/productVideoUpload");
+const imageFields = "+imagePublicIds +imagePublicId +videoPublicIds";
 
 const productFields = new Set(["name", "brand", "model", "images", "ram", "storage", "colors",
   "specifications", "description", "costPrice", "sellingPrice", "stock", "isActive", "commissionRateOverride"]);
@@ -171,7 +173,7 @@ exports.deactivateProduct = asyncHandler(async (req, res) => {
   res.json({ success: true, message: "Product deactivated" });
 });
 
-// Deletes a phone for good, with its photos. A phone already sold is refused.
+// Deletes a phone for good, with its photos and videos. A phone already sold is refused.
 exports.deleteProduct = asyncHandler(async (req, res) => {
   const product = await Product.findById(req.params.id).select(imageFields);
   if (!product) throw new ApiError(404, "Product not found");
@@ -180,10 +182,14 @@ exports.deleteProduct = asyncHandler(async (req, res) => {
   }
 
   const photos = photoIds(product).map((id, i) => ({ id, url: product.images[i] }));
+  const videos = videoIds(product).map((id, i) => ({ id, url: product.videos[i] }));
   await Product.deleteOne({ _id: product._id });
   let cleanupWarning = null;
   for (const photo of photos) {
     cleanupWarning = (await deleteCloudinaryImageIfUnused(photo.id, photo.url)) || cleanupWarning;
+  }
+  for (const video of videos) {
+    cleanupWarning = (await deleteCloudinaryVideoIfUnused(video.id, video.url)) || cleanupWarning;
   }
   res.json({ success: true, message: "Product deleted", ...(cleanupWarning ? { warning: cleanupWarning } : {}) });
 });
@@ -271,10 +277,11 @@ async function removeNewAssetAfterFailure(publicId, imageUrl) {
   }
 }
 
-function photoIndex(value, count) {
-  if (!/^\d{1,2}$/.test(String(value)) || Number(value) >= count) throw new ApiError(404, "Photo not found");
+function galleryIndex(value, count, notFound) {
+  if (!/^\d{1,2}$/.test(String(value)) || Number(value) >= count) throw new ApiError(404, notFound);
   return Number(value);
 }
+const photoIndex = (value, count) => galleryIndex(value, count, "Photo not found");
 
 // Adds one photo to the gallery of a phone (a phone can have one to five).
 exports.addProductPhoto = asyncHandler(async (req, res) => {
@@ -339,4 +346,104 @@ exports.makePrimaryPhoto = asyncHandler(async (req, res) => {
     await product.save();
   }
   res.json({ success: true, data: product });
+});
+
+// ----- videos: up to three short clips per phone -----
+
+// Checks the file really is a video, not just named like one. MP4 and MOV files
+// are built from "atoms" whose type sits at bytes 4-8; WebM starts with an EBML header.
+function validateProductVideo(file) {
+  if (!file || !Buffer.isBuffer(file.buffer) || file.buffer.length === 0) {
+    throw new ApiError(400, "Choose a video file to upload");
+  }
+  if (file.buffer.length > MAX_VIDEO_MB * 1024 * 1024) {
+    throw new ApiError(413, `Product videos must be ${MAX_VIDEO_MB} MB or smaller`);
+  }
+  const bytes = file.buffer;
+  const atom = bytes.length >= 12 ? bytes.subarray(4, 8).toString("latin1") : "";
+  const brand = bytes.length >= 12 ? bytes.subarray(8, 12).toString("latin1") : "";
+  const imageBrands = ["avif", "avis", "heic", "heix", "hevc", "hevx", "mif1", "msf1"];
+  const isMp4OrMov = (atom === "ftyp" && !imageBrands.includes(brand)) ||
+    ["moov", "mdat", "wide", "free", "skip"].includes(atom);
+  const isWebm = bytes.length >= 4 && bytes.subarray(0, 4).equals(Buffer.from([0x1a, 0x45, 0xdf, 0xa3]));
+
+  const ok = (isMp4OrMov && ["video/mp4", "video/quicktime"].includes(file.mimetype)) ||
+    (isWebm && file.mimetype === "video/webm");
+  if (!ok) throw new ApiError(400, "Upload an MP4, MOV or WebM video");
+}
+
+function videoIds(product) {
+  const videos = product.videos || [];
+  const ids = [...(product.videoPublicIds || [])];
+  while (ids.length < videos.length) ids.push(null);
+  return ids.slice(0, videos.length);
+}
+
+async function deleteCloudinaryVideoIfUnused(publicId, videoUrl) {
+  if (!publicId) return null;
+  try {
+    const references = [{ videoPublicIds: publicId }];
+    if (videoUrl) references.push({ videos: videoUrl });
+    if (await Product.exists({ $or: references })) return null;
+    await cloudinaryImages.deleteProductVideo(publicId);
+    return null;
+  } catch {
+    return "The video was removed, but its unused Cloudinary copy could not be deleted.";
+  }
+}
+
+// Adds one video to a phone.
+exports.addProductVideo = asyncHandler(async (req, res) => {
+  if (!req.file) throw new ApiError(400, "Choose a video file to upload");
+  const product = await Product.findById(req.params.id).select(imageFields);
+  if (!product) throw new ApiError(404, "Product not found");
+  const full = `A phone can have at most ${MAX_VIDEOS} videos. Remove one first.`;
+  if ((product.videos?.length || 0) >= MAX_VIDEOS) throw new ApiError(409, full);
+
+  validateProductVideo(req.file);
+  let asset;
+  try {
+    asset = await cloudinaryImages.uploadProductVideo(req.file.buffer);
+  } catch (error) {
+    if (error.statusCode) throw error;
+    throw new ApiError(502, "Cloudinary could not store the video. Please try again.");
+  }
+  if (typeof asset?.secureUrl !== "string" || !asset.secureUrl.startsWith("https://") ||
+      typeof asset?.publicId !== "string" || !asset.publicId) {
+    throw new ApiError(502, "Cloudinary returned incomplete video details. Please try again.");
+  }
+
+  const ids = videoIds(product);
+  if (ids.length !== (product.videoPublicIds?.length || 0)) {
+    await Product.updateOne({ _id: product._id }, { $set: { videoPublicIds: ids } });
+  }
+  // Atomic, so two uploads at once cannot push a phone past the limit.
+  const updated = await Product.findOneAndUpdate(
+    { _id: product._id, $expr: { $lt: [{ $size: { $ifNull: ["$videos", []] } }, MAX_VIDEOS] } },
+    { $push: { videos: asset.secureUrl, videoPublicIds: asset.publicId } },
+    { new: true }
+  );
+  if (!updated) {
+    await deleteCloudinaryVideoIfUnused(asset.publicId, asset.secureUrl);
+    throw new ApiError(409, full);
+  }
+  res.status(201).json({ success: true, data: updated });
+});
+
+// Removes the video at a position.
+exports.deleteProductVideo = asyncHandler(async (req, res) => {
+  const product = await Product.findById(req.params.id).select(imageFields);
+  if (!product) throw new ApiError(404, "Product not found");
+  const index = galleryIndex(req.params.index, product.videos?.length || 0, "Video not found");
+
+  const videos = [...product.videos];
+  const ids = videoIds(product);
+  const [url] = videos.splice(index, 1);
+  const [publicId] = ids.splice(index, 1);
+  product.videos = videos;
+  product.videoPublicIds = ids;
+  await product.save();
+
+  const cleanupWarning = await deleteCloudinaryVideoIfUnused(publicId, url);
+  res.json({ success: true, data: product, ...(cleanupWarning ? { warning: cleanupWarning } : {}) });
 });
