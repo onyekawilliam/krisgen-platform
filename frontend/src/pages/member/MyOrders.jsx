@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useFlutterwave, closePaymentModal } from "flutterwave-react-v3";
 import api from "../../api/axios";
 import { useConfirm } from "../../components/ConfirmDialog";
+import { BUSINESS_NAME } from "../../config";
 import { useAuth } from "../../context/AuthContext";
 import StatusBadge, { orderStatusLabel } from "../../components/StatusBadge";
 
@@ -33,7 +34,7 @@ export default function MyOrders() {
       phone_number: user?.phone || "",
     },
     customizations: {
-      title: "Krisgen Communications Ltd",
+      title: BUSINESS_NAME,
       description: "Complete your phone purchase",
       logo: "",
     },

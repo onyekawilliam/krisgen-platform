@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { SHOP_PHONE, SHOP_WHATSAPP_DISPLAY, whatsappUrl } from "../config";
+import { SHOP_PHONE, SHOP_WHATSAPP_DISPLAY, whatsappUrl, BUSINESS_NAME, CAC_NUMBER, BUSINESS_ADDRESS } from "../config";
 
 const footerLink = "text-sm text-brand-dim transition-colors hover:text-brand-text";
 const heading = "mb-1 text-xs font-semibold uppercase tracking-[0.14em] text-brand-dim/80";
@@ -12,7 +12,7 @@ export default function Footer() {
           <div>
             <div className="flex items-center gap-2.5 font-display text-lg font-bold">
               <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-gold font-display text-sm font-bold text-brand">KC</span>
-              Krisgen Communications Ltd
+              {BUSINESS_NAME}
             </div>
             <p className="mt-4 max-w-xs text-sm leading-relaxed text-brand-dim">
               Genuine phones, dealer prices, honest commissions.
@@ -55,6 +55,10 @@ export default function Footer() {
         </div>
 
         <div className="mt-12 border-t border-brand-line pt-6 text-xs leading-relaxed text-brand-dim">
+          <p className="mb-2">
+            {BUSINESS_NAME} is a business name registered with the Corporate Affairs Commission of Nigeria, no.{" "}
+            {CAC_NUMBER}. Shop: {BUSINESS_ADDRESS}.
+          </p>
           Registration is free. Affiliate commissions are paid only on completed phone sales and calculated from
           Krisgen's profit on each sale, never on recruiting other affiliates.
         </div>

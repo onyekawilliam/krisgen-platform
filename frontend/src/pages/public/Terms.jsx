@@ -1,10 +1,11 @@
 import LegalPage from "../../components/LegalPage";
+import { BUSINESS_NAME, CAC_NUMBER, BUSINESS_ADDRESS } from "../../config";
 
 const sections = [
   {
     heading: "Who we are",
     body: [
-      "Krisgen Communications Ltd (\"Krisgen\", \"we\", \"us\") sells mobile phones to customers in Nigeria and runs a free referral programme. By creating an account, placing an order or using the referral programme you agree to these terms.",
+      `${BUSINESS_NAME} ("Krisgen", "we", "us") is a business name registered with the Corporate Affairs Commission of Nigeria, no. ${CAC_NUMBER}, with its shop at ${BUSINESS_ADDRESS}. We sell mobile phones to customers in Nigeria and run a free referral programme. By creating an account, placing an order or using the referral programme you agree to these terms.`,
     ],
   },
   {
