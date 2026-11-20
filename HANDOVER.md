@@ -87,6 +87,10 @@ settings pages.
   with small thumbnails to click through. Use clear, square photos on a plain background, taken with your own phone or
   supplied to you by your distributor. Do not copy photos from other websites. Each photo must be under 5 MB. Photos
   upload through Cloudinary, so its three settings must be in Render.
+- **Phone videos:** each phone can also have up to **three short videos** (MP4, MOV or WebM, each under 50 MB).
+  Edit the phone in Admin → Products and use **Choose Files** under Videos; a brand-new phone must be saved first.
+  Customers see them after the photos on the phone's page, with a play sign. Keep them short (under a minute) so
+  they load quickly on mobile data. **Remove** deletes one.
 - **Process an order:** Admin → Orders. A paid order shows the customer's delivery address. Mark it
   **processing**, then **delivered**.
 - **Delivery areas:** customers choose their state and town at checkout (no street address). In Admin → Settings →
@@ -125,7 +129,7 @@ settings pages.
 |---|---|
 | Nobody can log in, or "Request origin is not allowed" | In Render, `CLIENT_URL` must be exactly your shop address: `https://`, no `/` at the end |
 | Shop is empty or says it could not load phones | The server may be waking up (wait a minute), or Render shows an error in its Logs tab |
-| Photos will not upload | One of the three `CLOUDINARY_*` settings in Render is missing or wrong |
+| Photos or videos will not upload | One of the three `CLOUDINARY_*` settings in Render is missing or wrong |
 | Customers paid but the order is not paid | The webhook is not set up, or `FLW_SECRET_HASH` does not match Flutterwave's secret hash |
 | No password-reset emails | Resend is not set up (needs `RESEND_API_KEY`, `EMAIL_FROM` and a verified domain) |
 | Locked out of admin | Ask the developer to run the admin password reset script |

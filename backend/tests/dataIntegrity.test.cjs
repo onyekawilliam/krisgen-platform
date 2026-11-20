@@ -714,3 +714,126 @@ test("deleting needs an admin and a real phone", async () => {
   assert.ok(await Product.exists({ _id: product._id }));
   assert.equal((await adminCall("DELETE", "/api/products/admin/" + new mongoose.Types.ObjectId() + "/permanent")).status, 404);
 });
+
+// ----- videos: up to three per phone -----
+
+const MP4 = Buffer.concat([Buffer.from([0, 0, 0, 0x18]), Buffer.from("ftypisom"), Buffer.alloc(16)]);
+const MOV = Buffer.concat([Buffer.from([0, 0, 0, 0x14]), Buffer.from("ftypqt  "), Buffer.alloc(16)]);
+const WEBM = Buffer.concat([Buffer.from([0x1a, 0x45, 0xdf, 0xa3]), Buffer.alloc(16)]);
+const AVIF = Buffer.concat([Buffer.from([0, 0, 0, 0x1c]), Buffer.from("ftypavif"), Buffer.alloc(16)]);
+const videoUrl = (name) => "https://res.cloudinary.com/test-cloud/video/upload/" + name + ".mp4";
+
+async function uploadVideo({ mime = "video/mp4", bytes = MP4, userId = admin?._id, field = "video" } = {}) {
+  const form = new FormData();
+  form.append(field, new Blob([bytes], { type: mime }), "phone-video.mp4");
+  const headers = {};
+  if (userId) headers.Authorization = "Bearer " + jwt.sign({ id: String(userId) }, process.env.JWT_SECRET);
+  const response = await fetch(baseUrl + productPath() + "/videos", { method: "POST", headers, body: form });
+  return { status: response.status, body: await response.json() };
+}
+
+async function withCloudinaryVideos(fn) {
+  const original = { up: cloudinaryImages.uploadProductVideo, del: cloudinaryImages.deleteProductVideo, delImage: cloudinaryImages.deleteProductImage };
+  const calls = { uploads: 0, deleted: [], deletedImages: [] };
+  cloudinaryImages.uploadProductVideo = async () => {
+    const n = ++calls.uploads;
+    return { secureUrl: videoUrl("clip" + n), publicId: "krisgen/products/clip" + n };
+  };
+  cloudinaryImages.deleteProductVideo = async (publicId) => { calls.deleted.push(publicId); return { result: "ok" }; };
+  cloudinaryImages.deleteProductImage = async (publicId) => { calls.deletedImages.push(publicId); return { result: "ok" }; };
+  try {
+    return await fn(calls);
+  } finally {
+    cloudinaryImages.uploadProductVideo = original.up;
+    cloudinaryImages.deleteProductVideo = original.del;
+    cloudinaryImages.deleteProductImage = original.delImage;
+  }
+}
+
+test("a phone can have up to three videos (MP4, MOV or WebM), kept in order and hidden IDs", async () => {
+  await withCloudinaryVideos(async (calls) => {
+    for (const [mime, bytes] of [["video/mp4", MP4], ["video/quicktime", MOV], ["video/webm", WEBM]]) {
+      const response = await uploadVideo({ mime, bytes });
+      assert.equal(response.status, 201, mime + ": " + JSON.stringify(response.body));
+      assert.equal(Object.hasOwn(response.body.data, "videoPublicIds"), false);
+    }
+    const saved = await Product.findById(product._id).select("+videoPublicIds");
+    assert.deepEqual([...saved.videos], [1, 2, 3].map((n) => videoUrl("clip" + n)));
+    assert.deepEqual([...saved.videoPublicIds], [1, 2, 3].map((n) => "krisgen/products/clip" + n));
+    assert.deepEqual(saved.images, [], "videos do not use up photo places");
+
+    const fourth = await uploadVideo();
+    assert.equal(fourth.status, 409);
+    assert.match(fourth.body.message, /at most 3 videos/i);
+    assert.equal(calls.uploads, 3, "the fourth is refused before it reaches Cloudinary");
+
+    const publicBody = await (await fetch(baseUrl + "/api/products/" + product._id)).json();
+    assert.deepEqual(publicBody.data.videos, saved.videos.map(String));
+    assert.equal(Object.hasOwn(publicBody.data, "videoPublicIds"), false, "Cloudinary IDs are never sent to customers");
+  });
+});
+
+test("video upload refuses non-videos, disguised files, photos sent as video, and non-admins", async () => {
+  await withCloudinaryVideos(async (calls) => {
+    assert.equal((await uploadVideo({ mime: "image/png", bytes: Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]) })).status, 400);
+    assert.equal((await uploadVideo({ bytes: Buffer.from("this is not a video at all") })).status, 400);
+    assert.equal((await uploadVideo({ bytes: AVIF })).status, 400, "an AVIF photo is not a video");
+    assert.equal((await uploadVideo({ mime: "video/webm", bytes: MP4 })).status, 400, "type must match the contents");
+    assert.equal((await uploadVideo({ field: "image" })).status, 400);
+    assert.equal((await uploadVideo({ userId: null })).status, 401);
+    assert.equal((await uploadVideo({ userId: (await member("Video Customer"))._id })).status, 403);
+    assert.equal(calls.uploads, 0);
+    assert.deepEqual((await storedProduct()).videos, []);
+  });
+});
+
+test("an oversized video is refused with a clear message", async () => {
+  const response = await uploadVideo({ bytes: Buffer.concat([MP4, Buffer.alloc(50 * 1024 * 1024)]) });
+  assert.equal(response.status, 413);
+  assert.match(response.body.message, /50 MB/);
+});
+
+test("Cloudinary not set up, or failing, gives a clear message and changes nothing", async () => {
+  const saved = { ...process.env };
+  delete process.env.CLOUDINARY_CLOUD_NAME;
+  try {
+    const response = await uploadVideo();
+    assert.equal(response.status, 503);
+    assert.match(response.body.message, /not configured/);
+  } finally {
+    Object.assign(process.env, saved);
+  }
+  const original = cloudinaryImages.uploadProductVideo;
+  cloudinaryImages.uploadProductVideo = async () => { throw new Error("provider down"); };
+  try {
+    const response = await uploadVideo();
+    assert.equal(response.status, 502);
+    assert.match(response.body.message, /could not store the video/);
+  } finally {
+    cloudinaryImages.uploadProductVideo = original;
+  }
+  assert.deepEqual((await storedProduct()).videos, []);
+});
+
+test("removing a video keeps the others and tidies Cloudinary; deleting a phone removes its videos", async () => {
+  await withCloudinaryVideos(async (calls) => {
+    for (let n = 0; n < 3; n++) assert.equal((await uploadVideo()).status, 201);
+    const removed = await adminCall("DELETE", productPath() + "/videos/1");
+    assert.equal(removed.status, 200);
+    assert.deepEqual([...(await storedProduct()).videos], [videoUrl("clip1"), videoUrl("clip3")]);
+    assert.deepEqual(calls.deleted, ["krisgen/products/clip2"]);
+    for (const bad of ["2", "-1", "abc", "1.5", "123"]) {
+      assert.equal((await adminCall("DELETE", productPath() + "/videos/" + bad)).status, 404, bad);
+    }
+
+    const deleted = await adminCall("DELETE", productPath() + "/permanent");
+    assert.equal(deleted.status, 200, JSON.stringify(deleted.body));
+    assert.deepEqual(calls.deleted.sort(), ["krisgen/products/clip1", "krisgen/products/clip2", "krisgen/products/clip3"]);
+  });
+});
+
+test("videos cannot be set by editing the phone directly", async () => {
+  const response = await request("PATCH", productPath(), { videos: [videoUrl("sneaky")] });
+  assert.equal(response.status, 400);
+  assert.deepEqual((await storedProduct()).videos, []);
+});
