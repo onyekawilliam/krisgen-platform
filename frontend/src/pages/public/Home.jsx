@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import api from "../../api/axios";
 import ProductCard from "../../components/ProductCard";
-import { onlinePayments, SHOP_PHONE, SHOP_WHATSAPP_DISPLAY, whatsappUrl } from "../../config";
+import { onlinePayments, SHOP_PHONE, SHOP_WHATSAPP_DISPLAY, whatsappUrl, BUSINESS_NAME } from "../../config";
 
 const brands = ["Tecno", "Infinix", "Redmi", "Itel", "Samsung", "Viva", "Realme"];
 
@@ -68,7 +68,7 @@ export default function Home() {
           <div className="relative grid items-center gap-10 md:grid-cols-[1.15fr_1fr]">
             <div>
               <span className="inline-flex items-center gap-2 rounded-full border border-brand-line bg-brand-raised px-3.5 py-1.5 text-xs font-medium text-brand-dim">
-                <span className="h-1.5 w-1.5 rounded-full bg-gold" /> Krisgen Communications Ltd
+                <span className="h-1.5 w-1.5 rounded-full bg-gold" /> {BUSINESS_NAME}
               </span>
               <h1 className="mt-5 font-display text-4xl font-bold leading-[1.04] tracking-tight md:text-6xl">
                 Genuine phones at <span className="text-gold">dealer prices.</span>

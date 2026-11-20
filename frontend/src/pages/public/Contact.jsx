@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { SHOP_PHONE, SHOP_WHATSAPP_DISPLAY, whatsappUrl } from "../../config";
+import { SHOP_PHONE, SHOP_WHATSAPP_DISPLAY, whatsappUrl, BUSINESS_ADDRESS } from "../../config";
 
 export default function Contact() {
   const [form, setForm] = useState({ name: "", phone: "", message: "" });
@@ -33,6 +33,10 @@ ${form.message.trim()}`;
           <div>
             <dt className="text-sm text-ink-dim">WhatsApp</dt>
             <dd className="font-mono text-2xl text-gold-bright">{SHOP_WHATSAPP_DISPLAY}</dd>
+          </div>
+          <div>
+            <dt className="text-sm text-ink-dim">Visit the shop</dt>
+            <dd className="text-ink">{BUSINESS_ADDRESS}</dd>
           </div>
         </dl>
         <div className="flex gap-3">

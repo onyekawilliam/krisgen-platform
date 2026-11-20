@@ -5,7 +5,7 @@ import { useAuth } from "../../context/AuthContext";
 import { useFlutterwave, closePaymentModal } from "flutterwave-react-v3";
 import ProductImage from "../../components/ProductImage";
 import { blockedArea } from "../../utils/delivery";
-import { onlinePayments, SHOP_PHONE, whatsappUrl } from "../../config";
+import { onlinePayments, SHOP_PHONE, whatsappUrl, BUSINESS_NAME } from "../../config";
 
 
 function naira(n) {
@@ -82,7 +82,7 @@ export default function ProductDetails() {
     phone_number: user?.phone || "",
   },
   customizations: {
-    title: "Krisgen Communications Ltd",
+    title: BUSINESS_NAME,
     description: product?.name
       ? `Payment for ${product.name}`
       : "Phone purchase",

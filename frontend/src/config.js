@@ -12,3 +12,9 @@ export const SHOP_WHATSAPP_DISPLAY = "07031548095";
 export const SHOP_WHATSAPP = "2347031548095"; // international form for wa.me links
 export const whatsappUrl = (text) =>
   `https://wa.me/${SHOP_WHATSAPP}${text ? `?text=${encodeURIComponent(text)}` : ""}`;
+
+// As on the CAC Certificate of Registration of Business Name (4 September 2012).
+// Payment providers compare these with the business's documents, so keep them exact.
+export const BUSINESS_NAME = "Krisgen Communications";
+export const CAC_NUMBER = "063313";
+export const BUSINESS_ADDRESS = "No. 21 MM Abdul Shopping Complex, Ankpa, Kogi State";
