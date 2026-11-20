@@ -118,8 +118,20 @@ export default function Navbar() {
             )}
           </div>
 
+          {/* On phones, signing in and joining stay in view; the theme switch moves into the menu to make room. */}
           <div className="ml-auto flex items-center gap-1 md:hidden">
-            <ThemeToggle />
+            {user ? (
+              <Link to={accountPath} onClick={() => setOpen(false)} className="whitespace-nowrap rounded-full px-3 py-2 text-sm font-medium text-ink-dim transition-colors hover:bg-navy-panel2 hover:text-ink">
+                {accountLabel}
+              </Link>
+            ) : (
+              <>
+                <Link to="/login" onClick={() => setOpen(false)} className="whitespace-nowrap rounded-full px-3 py-2 text-sm font-medium text-ink-dim transition-colors hover:bg-navy-panel2 hover:text-ink">
+                  Log in
+                </Link>
+                <Link to="/register" onClick={() => setOpen(false)} className="btn-primary whitespace-nowrap px-4 py-2 text-sm">Join free</Link>
+              </>
+            )}
             <button
               type="button"
               className="flex h-11 w-11 items-center justify-center rounded-full text-ink transition-colors hover:bg-navy-panel2"
@@ -147,17 +159,11 @@ export default function Navbar() {
               </NavLink>
             ))}
             <div className="mt-2 flex flex-col gap-2 border-t border-navy-line pt-3">
-              {user ? (
-                <>
-                  <Link to={accountPath} onClick={() => setOpen(false)} className="btn-outline py-2.5 text-sm">{accountLabel}</Link>
-                  <button onClick={handleLogout} className="rounded-xl py-2.5 text-sm font-medium text-coral">Log out</button>
-                </>
-              ) : (
-                <>
-                  <Link to="/login" onClick={() => setOpen(false)} className="btn-outline py-2.5 text-sm">Log in</Link>
-                  <Link to="/register" onClick={() => setOpen(false)} className="btn-primary py-2.5 text-sm">Join free</Link>
-                </>
-              )}
+              <div className="flex items-center justify-between rounded-xl px-3 text-sm font-medium text-ink-dim">
+                Light or dark look
+                <ThemeToggle />
+              </div>
+              {user && <button onClick={handleLogout} className="rounded-xl py-2.5 text-sm font-medium text-coral">Log out</button>}
             </div>
           </nav>
         )}
